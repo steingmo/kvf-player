@@ -57,6 +57,11 @@ come from real feeds. Everything else — the catalogue index, the schedule, the
 VIT list — is scraped from kvf.fo's HTML, because there's no API. Live TV and
 radio are HLS from `play.kringvarp.fo`, played by AVPlayer.
 
+Images need one extra step: kvf.fo serves Drupal image *derivatives*, and the
+podcast style crops a show's 16:9 banner to a square — cutting the title off both
+ends — while the guide style shrinks thumbnails to 116x65. `kvfImageURL` strips the
+style segment to fetch the original instead.
+
 `Sources/KVFKit/Parse.swift` is therefore the fragile part: it parses markup
 that KVF can change at any time. When something stops showing up, run
 `swift run kvf-check --live` to find out which parser broke.

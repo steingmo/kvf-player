@@ -39,6 +39,22 @@ check("guide flags Faroe-only entries", guide.first?.restricted == true && guide
 check("guide resolves relative images", guide.first?.image?.absoluteString == "https://kvf.fo/sites/dagur.jpg")
 check("guide knows which rows expand", guide.first?.hasDetail == true && guide.last?.hasDetail == false)
 
+// MARK: image URLs
+
+check(
+    "image URL drops the Drupal style segment and its itok token",
+    kvfImageURL("https://kvf.fo/sites/default/files/styles/podcast/public/dv.png?itok=cRre1uY5")?
+        .absoluteString == "https://kvf.fo/sites/default/files/dv.png")
+check(
+    "image URL keeps subdirectories under files/",
+    kvfImageURL("/sites/default/files/styles/guide/public/2026-08/vedrid.jpg")?
+        .absoluteString == "https://kvf.fo/sites/default/files/2026-08/vedrid.jpg")
+check(
+    "image URL leaves a non-derivative alone",
+    kvfImageURL("https://kvf.fo/sites/default/files/dv.png")?
+        .absoluteString == "https://kvf.fo/sites/default/files/dv.png")
+check("image URL rejects an empty source", kvfImageURL("") == nil)
+
 // MARK: catalogue
 
 let hubHTML = """
@@ -146,6 +162,14 @@ if CommandLine.arguments.contains("--live") {
             let detail = try await KVFService.shared.episodes(feedID: first.feedID)
             check("\(first.title) has episodes", !detail.episodes.isEmpty)
             print("     \(detail.episodes.count) episodes, first: \(detail.episodes.first?.title ?? "-")")
+
+            // The artwork rewrite points off the feed's own URL, so prove it resolves.
+            if let image = detail.image {
+                let (bytes, response) = try await URLSession.shared.data(from: image)
+                let code = (response as? HTTPURLResponse)?.statusCode ?? 0
+                check("artwork original resolves (\(image.lastPathComponent))", code == 200 && bytes.count > 0)
+                print("     \(bytes.count) bytes from \(image.absoluteString)")
+            }
         }
 
         let day = try await KVFService.shared.guideDay(kind: .tv, date: todayDateString())

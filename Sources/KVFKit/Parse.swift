@@ -191,7 +191,7 @@ public func parseFeed(feedID: String, xml data: Data) throws -> ShowEpisodes {
     }
 
     return ShowEpisodes(
-        feedID: feedID, title: title, image: URL(string: imageString), kind: showKind, episodes: episodes)
+        feedID: feedID, title: title, image: kvfImageURL(imageString), kind: showKind, episodes: episodes)
 }
 
 // MARK: - Programme guide
@@ -220,7 +220,7 @@ public func parseGuideHTML(_ html: String) -> [GuideEntry] {
             title: title,
             subtitle: subtitle,
             description: group(textRE, row).map(stripTags) ?? "",
-            image: group(imageRE, row).flatMap { resolveKVFURL($0) },
+            image: group(imageRE, row).flatMap { kvfImageURL($0) },
             restricted: row.contains("class=\"image-container\""),
             current: classes.contains("s-current"))
     }
@@ -228,6 +228,22 @@ public func parseGuideHTML(_ html: String) -> [GuideEntry] {
 
 public func resolveKVFURL(_ source: String) -> URL? {
     URL(string: source.hasPrefix("http") ? source : "https://kvf.fo\(source)")
+}
+
+private let styleDerivativeRE = rx("/styles/[^/]+/public/")
+
+/// kvf.fo serves Drupal image *derivatives*: the "podcast" style crops a show's
+/// 16:9 banner to a square — cutting the title off both ends — and the guide style
+/// shrinks thumbnails to 116x65. Dropping the style segment gives the original.
+public func kvfImageURL(_ source: String) -> URL? {
+    guard !source.isEmpty else { return nil }
+
+    let stripped = source.replacing(styleDerivativeRE, with: "/")
+    guard stripped != source else { return resolveKVFURL(source) }
+
+    // The ?itok= token only signs the derivative; the original needs no query.
+    let path = stripped.split(separator: "?").first.map(String.init) ?? stripped
+    return resolveKVFURL(path)
 }
 
 // MARK: - VIT

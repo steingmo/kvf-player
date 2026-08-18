@@ -115,12 +115,13 @@ struct ShowView: View {
                 List {
                     if let image = detail.image {
                         Section {
-                            // Show artwork is square (1440x1440) — scaledToFill blew it up
-                            // to cover the row and showed a magnified middle slice.
+                            // The artwork is KVF's 16:9 show banner (see kvfImageURL —
+                            // the feed's own URL points at a square-cropped derivative).
                             AsyncImage(url: image) { $0.resizable().scaledToFit() } placeholder: {
                                 RoundedRectangle(cornerRadius: 10).fill(.quaternary)
+                                    .aspectRatio(16 / 9, contentMode: .fit)
                             }
-                            .frame(width: 160, height: 160)
+                            .frame(maxWidth: 360, maxHeight: 202)
                             .clipShape(RoundedRectangle(cornerRadius: 10))
                             .frame(maxWidth: .infinity, alignment: .center)
                         }
