@@ -1,0 +1,107 @@
+import Foundation
+
+public enum Kind: String, Codable, Hashable, CaseIterable, Sendable {
+    case tv, radio
+
+    public var faroese: String { self == .tv ? "Sjónvarp" : "Útvarp" }
+}
+
+// MARK: - Live channels
+
+/// KVF live streams. Both TV and radio are HLS from play.kringvarp.fo; the
+/// /redirect endpoint resolves to the current edge server, so it stays valid
+/// even when the CDN host rotates.
+public struct Channel: Identifiable, Hashable, Sendable {
+    public let id: String
+    public let name: String
+    public let tagline: String
+    public let kind: Kind
+    public let url: URL
+}
+
+public let channels: [Channel] = [
+    Channel(
+        id: "sjonvarp", name: "KVF Sjónvarp", tagline: "Beinleiðis sjónvarp", kind: .tv,
+        url: URL(string: "https://play.kringvarp.fo/redirect/kvf/_definst_/smil:kvf.smil?type=m3u8")!),
+    Channel(
+        id: "tingvarp", name: "Tingvarp", tagline: "Løgtingið beinleiðis", kind: .tv,
+        url: URL(string: "https://play.kringvarp.fo/redirect/tingvarp/_definst_/smil:tingvarp.smil?type=m3u8")!),
+    Channel(
+        id: "utvarp", name: "Útvarp Føroya", tagline: "Beinleiðis útvarp", kind: .radio,
+        url: URL(string: "https://play.kringvarp.fo/redirect/radio/_definst_/radio.stream?type=m3u8")!),
+    Channel(
+        id: "tingutvarp", name: "Tingútvarp", tagline: "Útvarp úr Løgtinginum", kind: .radio,
+        url: URL(string: "https://play.kringvarp.fo/redirect/tingradio/_definst_/tingradio.stream?type=m3u8")!),
+]
+
+public let defaultChannelID = "sjonvarp"
+
+public func channel(_ id: String) -> Channel? { channels.first { $0.id == id } }
+
+// MARK: - On demand
+
+public struct Show: Identifiable, Hashable, Codable, Sendable {
+    public let feedID: String
+    public let title: String
+    public let kind: Kind
+
+    public var id: String { "\(kind.rawValue):\(feedID)" }
+
+    public init(feedID: String, title: String, kind: Kind) {
+        self.feedID = feedID
+        self.title = title
+        self.kind = kind
+    }
+}
+
+public struct Episode: Identifiable, Hashable, Codable, Sendable {
+    public let id: String
+    public let title: String
+    public let date: Date?
+    public let durationSec: Int
+    public let description: String
+    public let mediaURL: URL
+    public let kind: Kind
+}
+
+public struct ShowEpisodes: Hashable, Codable, Sendable {
+    public let feedID: String
+    public let title: String
+    public let image: URL?
+    public let kind: Kind
+    public let episodes: [Episode]
+}
+
+// MARK: - Programme guide (Skrá)
+
+public struct GuideEntry: Identifiable, Hashable, Sendable {
+    public let id = UUID()
+    /// "HH:MM"
+    public let time: String
+    public let title: String
+    public let subtitle: String
+    public let description: String
+    public let image: URL?
+    /// Faroe-only viewing/listening restriction.
+    public let restricted: Bool
+    /// Currently airing.
+    public let current: Bool
+
+    public var hasDetail: Bool { !description.isEmpty || image != nil }
+}
+
+public struct GuideDay: Sendable {
+    public let kind: Kind
+    public let date: String
+    public let entries: [GuideEntry]
+}
+
+// MARK: - VIT (children's section)
+
+public struct VitShow: Identifiable, Hashable, Sendable {
+    /// Path on kvf.fo, e.g. "/vit/sending/sv/snipp-snapp".
+    public let path: String
+    public let title: String
+
+    public var id: String { path }
+}

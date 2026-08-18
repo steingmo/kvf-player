@@ -1,0 +1,90 @@
+# KVF
+
+A native macOS app for [Kringvarp Føroya](https://kvf.fo) — live TV, live radio,
+the full on-demand catalogue, and the programme guide, in a real Mac app instead
+of a browser tab.
+
+- **Beinleiðis** — KVF Sjónvarp and Tingvarp (TV), Útvarp Føroya and Tingútvarp (radio)
+- **Sendingar** — the whole on-demand catalogue (~690 programmes), searchable,
+  with episode lists and a seekable player for both video and audio
+- **Skrá** — day-by-day TV and radio schedules, with the current programme marked
+- **VIT** — KVF's children's section
+- **Uppáhald** — star any programme to pin it to the sidebar
+- Picture-in-Picture, AirPlay, fullscreen, and Now Playing / media-key control
+
+## Install
+
+With [Homebrew](https://brew.sh):
+
+```sh
+brew install --cask steingmo/tap/kvf-player
+```
+
+Or grab the latest notarized build from the
+[Releases page](https://github.com/steingmo/kvf-player/releases), unzip, and drag
+**KVF.app** to Applications. The app is signed and notarized with a Developer ID,
+so it runs without Gatekeeper warnings.
+
+Requires macOS 14 (Sonoma) or newer, Intel or Apple silicon.
+
+## Build
+
+```sh
+./build.sh          # release → build/KVF.app, ad-hoc signed
+./build.sh debug    # faster build while developing
+```
+
+Requires the Xcode command line tools and nothing else — no package
+dependencies. In Xcode, open `Package.swift`.
+
+To cut a signed, notarized, universal build for distribution, see `release.sh`.
+
+## Tests
+
+```sh
+swift run kvf-check          # parser checks against fixtures, offline
+swift run kvf-check --live   # also hits kvf.fo, catches layout changes
+```
+
+## How it works
+
+KVF publishes every on-demand programme as a standard podcast feed, so episodes
+come from real feeds. Everything else — the catalogue index, the schedule, the
+VIT list — is scraped from kvf.fo's HTML, because there's no API. Live TV and
+radio are HLS from `play.kringvarp.fo`, played by AVPlayer.
+
+`Sources/KVFKit/Parse.swift` is therefore the fragile part: it parses markup
+that KVF can change at any time. When something stops showing up, run
+`swift run kvf-check --live` to find out which parser broke.
+
+Layout:
+
+- `Sources/KVFKit/` — channels, models, scraping, podcast feeds, favourites. No UI.
+- `Sources/KVF/` — SwiftUI app: `App.swift` (sidebar + routing), `Player.swift`,
+  `Browse.swift` (Sendingar + VIT), `Guide.swift`.
+- `Sources/kvf-check/` — the parser checks.
+
+Notes for anyone reading the player code:
+
+- One shared `AVPlayer` (`Playback.shared`), so two streams can never play at once.
+  Volume and mute persist via KVO into UserDefaults.
+- Player views refcount their appearances. SwiftUI builds the detail view twice at
+  launch and discards the first copy; stopping playback on that stray `onDisappear`
+  meant nothing played until you navigated away and back.
+- VIT programmes expose no feed and no stream URL in their markup, so they open in
+  their own window on the real kvf.fo page, using KVF's own player.
+
+## Unofficial
+
+This is an unofficial, independent client. It is not affiliated with, endorsed
+by, or supported by Kringvarp Føroya. It plays the same public streams and feeds
+that kvf.fo serves to any browser, and adds nothing and stores nothing on KVF's
+side. Some programming is licensed for the Faroe Islands only and will not play
+elsewhere — the app shows KVF's own restriction marker in the guide where it
+applies.
+
+Trademarks and all broadcast content belong to Kringvarp Føroya.
+
+## Licence
+
+MIT — see [LICENSE](LICENSE).

@@ -1,0 +1,5 @@
+.build/
+build/
+KVF.app
+.DS_Store
+.claude/
