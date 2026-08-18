@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+  <channel>
+    <title>KVF</title>
+    <item>
+      <title>Version 1.1.0</title>
+      <pubDate>Tue, 18 Aug 2026 19:59:58 +0100</pubDate>
+      <sparkle:version>1.1.0</sparkle:version>
+      <sparkle:shortVersionString>1.1.0</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <enclosure
+        url="https://github.com/steingmo/kvf-player/releases/download/v1.1.0/KVF.zip"
+        sparkle:edSignature="VXjqOJ6HFE32gSQWQTp5qGZL2mxdM3pVTUBfdsuBe3KbeEO8Sl+TSn35LMR05/zh9yjtL56bFRmju/HJhGV1Cw==" length="3338574"
+        type="application/octet-stream"/>
+    </item>
+  </channel>
+</rss>

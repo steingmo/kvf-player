@@ -27,6 +27,10 @@ so it runs without Gatekeeper warnings.
 
 Requires macOS 14 (Sonoma) or newer, Intel or Apple silicon.
 
+The app checks for updates via [Sparkle](https://sparkle-project.org) (or on
+demand from the KVF menu) and can install them in place. Homebrew installs can
+also update with `brew upgrade --cask kvf-player`.
+
 ## Build
 
 ```sh

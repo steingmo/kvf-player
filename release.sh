@@ -27,13 +27,23 @@ STAGED_APP="$STAGE/KVF.app"
 STAGED_ZIP="$STAGE/KVF.zip"
 
 echo "==> Assembling ${STAGED_APP}"
-mkdir -p "$STAGED_APP/Contents/MacOS" "$STAGED_APP/Contents/Resources"
+mkdir -p "$STAGED_APP/Contents/MacOS" "$STAGED_APP/Contents/Resources" "$STAGED_APP/Contents/Frameworks"
 cp .build/apple/Products/Release/KVF "$STAGED_APP/Contents/MacOS/KVF"
 cp Resources/Info.plist "$STAGED_APP/Contents/Info.plist"
 cp Resources/app-icon.icns "$STAGED_APP/Contents/Resources/app-icon.icns"
+ditto .build/apple/Products/Release/Sparkle.framework "$STAGED_APP/Contents/Frameworks/Sparkle.framework"
+install_name_tool -add_rpath @executable_path/../Frameworks "$STAGED_APP/Contents/MacOS/KVF"
 xattr -cr "$STAGED_APP"
 
 echo "==> Signing with '${IDENTITY}' (hardened runtime)"
+# Sparkle's nested helpers must each carry a hardened-runtime signature.
+SPARKLE="$STAGED_APP/Contents/Frameworks/Sparkle.framework"
+codesign --force --options runtime --timestamp --preserve-metadata=entitlements \
+    --sign "$IDENTITY" "$SPARKLE/Versions/B/XPCServices/Downloader.xpc"
+codesign --force --options runtime --timestamp --sign "$IDENTITY" "$SPARKLE/Versions/B/XPCServices/Installer.xpc"
+codesign --force --options runtime --timestamp --sign "$IDENTITY" "$SPARKLE/Versions/B/Autoupdate"
+codesign --force --options runtime --timestamp --sign "$IDENTITY" "$SPARKLE/Versions/B/Updater.app"
+codesign --force --options runtime --timestamp --sign "$IDENTITY" "$SPARKLE"
 codesign --force --options runtime --timestamp --sign "$IDENTITY" "$STAGED_APP"
 codesign --verify --strict --verbose=2 "$STAGED_APP"
 
@@ -53,9 +63,34 @@ ditto "$STAGED_APP" "$APP"
 cp "$STAGED_ZIP" "$ZIP"
 
 VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" Resources/Info.plist)
+
+echo "==> Generating appcast.xml"
+# Signed with the same Sparkle EdDSA key as the other apps, read from the keychain.
+SIGNATURE=$(.build/artifacts/sparkle/Sparkle/bin/sign_update "$ZIP" | tr -d '\n')
+PUBDATE=$(LC_ALL=C date "+%a, %d %b %Y %H:%M:%S %z")
+cat > appcast.xml <<APPCAST
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:sparkle="http://www.andymatuschak.org/xml-namespaces/sparkle">
+  <channel>
+    <title>KVF</title>
+    <item>
+      <title>Version ${VERSION}</title>
+      <pubDate>${PUBDATE}</pubDate>
+      <sparkle:version>${VERSION}</sparkle:version>
+      <sparkle:shortVersionString>${VERSION}</sparkle:shortVersionString>
+      <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+      <enclosure
+        url="https://github.com/steingmo/kvf-player/releases/download/v${VERSION}/KVF.zip"
+        ${SIGNATURE}
+        type="application/octet-stream"/>
+    </item>
+  </channel>
+</rss>
+APPCAST
+
 echo ""
 echo "Done. ${ZIP} opens on any Mac (macOS 14+) with no warnings."
-echo "Publish:"
+echo "Publish: commit + push appcast.xml, then:"
 echo "  gh release create v${VERSION} ${ZIP} --title \"KVF ${VERSION}\" --notes \"...\""
 echo "  /opt/homebrew/Library/Taps/steingmo/homebrew-tap/bump-cask.sh kvf-player ${VERSION}"
 spctl --assess --type execute --verbose "$APP" || true

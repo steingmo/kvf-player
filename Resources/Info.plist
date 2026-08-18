@@ -2,29 +2,35 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>CFBundleDisplayName</key>
+	<string>KVF</string>
 	<key>CFBundleExecutable</key>
 	<string>KVF</string>
+	<key>CFBundleIconFile</key>
+	<string>app-icon</string>
 	<key>CFBundleIdentifier</key>
 	<string>com.steingrimosa.kvf</string>
 	<key>CFBundleName</key>
 	<string>KVF</string>
-	<key>CFBundleDisplayName</key>
-	<string>KVF</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.0.0</string>
+	<string>1.1.0</string>
 	<key>CFBundleVersion</key>
-	<string>1</string>
-	<key>CFBundleIconFile</key>
-	<string>app-icon</string>
+	<string>2</string>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.entertainment</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>14.0</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
-	<key>LSApplicationCategoryType</key>
-	<string>public.app-category.entertainment</string>
 	<key>NSHumanReadableCopyright</key>
 	<string>Streymar frá Kringvarp Føroya.</string>
+	<key>SUEnableAutomaticChecks</key>
+	<true/>
+	<key>SUFeedURL</key>
+	<string>https://raw.githubusercontent.com/steingmo/kvf-player/main/appcast.xml</string>
+	<key>SUPublicEDKey</key>
+	<string>bfk3xLADn+lXCwFVWvwbYf4DL5e+imVJSHMz5s6sds0=</string>
 </dict>
 </plist>

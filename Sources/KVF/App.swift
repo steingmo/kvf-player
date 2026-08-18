@@ -3,6 +3,8 @@ import SwiftUI
 
 @main
 struct KVFApp: App {
+    @StateObject private var updater = UpdaterViewModel()
+
     var body: some Scene {
         WindowGroup {
             RootView()
@@ -10,6 +12,7 @@ struct KVFApp: App {
                 .tint(.kvf)
         }
         .defaultSize(width: 1080, height: 680)
+        .commands { CheckForUpdatesCommand(updater: updater) }
 
         // VIT shows expose no podcast feed and no stream URL in their markup, so
         // they open on the real kvf.fo page and use KVF's own player.
