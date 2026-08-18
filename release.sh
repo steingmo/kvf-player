@@ -63,6 +63,10 @@ ditto "$STAGED_APP" "$APP"
 cp "$STAGED_ZIP" "$ZIP"
 
 VERSION=$(/usr/libexec/PlistBuddy -c "Print :CFBundleShortVersionString" Resources/Info.plist)
+# Sparkle compares sparkle:version against the installed app's CFBundleVersion, so
+# it has to be the build number. Advertising the marketing string made every client
+# read "3" > "1.1.1" and refuse the update.
+BUILD=$(/usr/libexec/PlistBuddy -c "Print :CFBundleVersion" Resources/Info.plist)
 
 echo "==> Generating appcast.xml"
 # Signed with the same Sparkle EdDSA key as the other apps, read from the keychain.
@@ -76,7 +80,7 @@ cat > appcast.xml <<APPCAST
     <item>
       <title>Version ${VERSION}</title>
       <pubDate>${PUBDATE}</pubDate>
-      <sparkle:version>${VERSION}</sparkle:version>
+      <sparkle:version>${BUILD}</sparkle:version>
       <sparkle:shortVersionString>${VERSION}</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
       <enclosure

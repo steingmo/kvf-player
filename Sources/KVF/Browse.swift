@@ -115,11 +115,14 @@ struct ShowView: View {
                 List {
                     if let image = detail.image {
                         Section {
-                            AsyncImage(url: image) { $0.resizable().scaledToFill() } placeholder: {
-                                Rectangle().fill(.quaternary)
+                            // Show artwork is square (1440x1440) — scaledToFill blew it up
+                            // to cover the row and showed a magnified middle slice.
+                            AsyncImage(url: image) { $0.resizable().scaledToFit() } placeholder: {
+                                RoundedRectangle(cornerRadius: 10).fill(.quaternary)
                             }
-                            .frame(height: 160)
+                            .frame(width: 160, height: 160)
                             .clipShape(RoundedRectangle(cornerRadius: 10))
+                            .frame(maxWidth: .infinity, alignment: .center)
                         }
                     }
                     Section("\(detail.episodes.count) sendingar") {

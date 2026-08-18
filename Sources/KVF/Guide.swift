@@ -104,8 +104,9 @@ private struct GuideRow: View {
     private var detail: some View {
         VStack(alignment: .leading, spacing: 8) {
             if let image = entry.image {
-                AsyncImage(url: image) { $0.resizable().scaledToFill() } placeholder: {
-                    Rectangle().fill(.quaternary)
+                // Fit, not fill: these thumbnails vary in aspect and fill cropped them.
+                AsyncImage(url: image) { $0.resizable().scaledToFit() } placeholder: {
+                    RoundedRectangle(cornerRadius: 8).fill(.quaternary)
                 }
                 .frame(maxWidth: 320, maxHeight: 180)
                 .clipShape(RoundedRectangle(cornerRadius: 8))
