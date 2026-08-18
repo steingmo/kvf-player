@@ -75,6 +75,14 @@ Notes for anyone reading the player code:
 - Player views refcount their appearances. SwiftUI builds the detail view twice at
   launch and discards the first copy; stopping playback on that stray `onDisappear`
   meant nothing played until you navigated away and back.
+- What plays is driven by `onChange(of: url)`, not by view lifecycle. SwiftUI reuses
+  the same `MediaView` when you switch channel, so no appear/disappear fires and
+  keying playback to those left the previous stream running.
+- `MediaView` keeps exactly **one** `PlayerHost`, in a fixed position in its `ZStack`,
+  and only swaps the controls style between video and audio. AVKit supports a single
+  presenting view per `AVPlayer`: two live `AVPlayerView`s tore down each other's
+  video output, and sharing one view instance between two representables corrupted
+  SwiftUI's layout tree (a hard crash). Don't add a second one.
 - VIT programmes expose no feed and no stream URL in their markup, so they open in
   their own window on the real kvf.fo page, using KVF's own player.
 

@@ -17,6 +17,28 @@ final class Playback {
     var failure: String?
     var loading = false
 
+    /// Mirrors of the player's volume and mute, so SwiftUI can bind to them.
+    /// Writes go straight to the player; KVO brings back changes made from the
+    /// player view's own controls or a media key.
+    var volume: Float {
+        get { volumeStore }
+        set {
+            volumeStore = newValue
+            player.volume = newValue
+        }
+    }
+
+    var isMuted: Bool {
+        get { mutedStore }
+        set {
+            mutedStore = newValue
+            player.isMuted = newValue
+        }
+    }
+
+    private var volumeStore: Float = 1
+    private var mutedStore = false
+
     @ObservationIgnored private var currentURL: URL?
     @ObservationIgnored private var nowPlaying = (title: "", subtitle: "", live: false)
     @ObservationIgnored private var viewers = 0
@@ -27,12 +49,17 @@ final class Playback {
         let defaults = UserDefaults.standard
         player.volume = defaults.object(forKey: "kvf.volume") as? Float ?? 1
         player.isMuted = defaults.bool(forKey: "kvf.muted")
+        volumeStore = player.volume
+        mutedStore = player.isMuted
+
         settingObservations = [
             player.observe(\.volume) { player, _ in
                 UserDefaults.standard.set(player.volume, forKey: "kvf.volume")
+                Task { @MainActor in Playback.shared.volumeStore = player.volume }
             },
             player.observe(\.isMuted) { player, _ in
                 UserDefaults.standard.set(player.isMuted, forKey: "kvf.muted")
+                Task { @MainActor in Playback.shared.mutedStore = player.isMuted }
             },
             // Keeps Now Playing in sync when the user pauses from AVPlayerView's
             // own controls rather than a media key.
@@ -43,20 +70,22 @@ final class Playback {
         configureRemoteCommands()
     }
 
-    /// Called from a player view's `onAppear`. SwiftUI builds the detail view twice
-    /// at launch and then tears the first copy down, so appearances are refcounted —
-    /// stopping on that stray `onDisappear` used to kill playback before it started.
-    func attach(_ url: URL, title: String, subtitle: String, live: Bool) {
+    /// Refcounts live player views. SwiftUI builds the detail view twice at launch
+    /// and then tears the first copy down; stopping on that stray `onDisappear`
+    /// used to kill playback before it started.
+    func retain() {
         viewers += 1
-        play(url, title: title, subtitle: subtitle, live: live)
     }
 
-    func detach() {
+    func release() {
         viewers = max(0, viewers - 1)
         if viewers == 0 { stop() }
     }
 
-    private func play(_ url: URL, title: String, subtitle: String, live: Bool) {
+    /// Driven by `onChange(of: url)`, NOT by view lifecycle: SwiftUI reuses the same
+    /// MediaView when you switch channel, so no appear/disappear event fires and
+    /// keying playback to those left the previous stream playing.
+    func play(_ url: URL, title: String, subtitle: String, live: Bool) {
         nowPlaying = (title, subtitle, live)
         guard currentURL != url else {
             player.play()
@@ -195,22 +224,31 @@ final class Playback {
 
 // ponytail: AVPlayerView gives play/pause, scrubbing, volume, AirPlay, PiP and
 // fullscreen for free — none of the Glaze app's custom control chrome is needed.
+// AVKit supports a single presenting view per AVPlayer, so MediaView keeps exactly
+// one of these in a fixed position and only swaps its controls style. Two live
+// AVPlayerViews on one player tore down each other's video output; handing the same
+// view instance to two representables instead corrupted SwiftUI's layout tree.
 struct PlayerHost: NSViewRepresentable {
-    let player: AVPlayer
     var controlsStyle: AVPlayerViewControlsStyle = .floating
 
     func makeNSView(context: Context) -> AVPlayerView {
         let view = AVPlayerView()
-        view.player = player
-        view.controlsStyle = controlsStyle
+        view.player = Playback.shared.player
         view.allowsPictureInPicturePlayback = true
-        view.showsFullScreenToggleButton = controlsStyle == .floating
         view.videoGravity = .resizeAspect
+        apply(to: view)
         return view
     }
 
     func updateNSView(_ view: AVPlayerView, context: Context) {
+        let player = Playback.shared.player
         if view.player !== player { view.player = player }
+        apply(to: view)
+    }
+
+    private func apply(to view: AVPlayerView) {
+        view.controlsStyle = controlsStyle
+        view.showsFullScreenToggleButton = controlsStyle == .floating
     }
 }
 
@@ -255,23 +293,33 @@ private struct MediaView: View {
     @State private var playback = Playback.shared
 
     var body: some View {
-        Group {
+        // Exactly one PlayerHost, always the second child of this ZStack, so its
+        // identity is stable across channel changes and TV <-> radio: SwiftUI reuses
+        // the one AVPlayerView instead of standing up a second one on the same player.
+        ZStack(alignment: .bottom) {
             if video {
-                PlayerHost(player: playback.player)
-                    .background(.black)
-                    .overlay(alignment: .topLeading) {
-                        if live { LiveBadge().padding(16) }
-                    }
+                Color.black
             } else {
-                audioLayout
+                audioBackdrop
             }
+
+            PlayerHost(controlsStyle: video ? .floating : .inline)
+                .frame(maxWidth: video ? .infinity : 460)
+                .frame(maxHeight: video ? .infinity : 48)
+                .padding(.bottom, video ? 0 : 40)
+        }
+        .overlay(alignment: .topLeading) {
+            if live && video { LiveBadge().padding(16) }
         }
         .overlay { overlay }
-        .onAppear { playback.attach(url, title: title, subtitle: subtitle, live: live) }
-        .onDisappear { playback.detach() }
+        .onAppear { playback.retain() }
+        .onDisappear { playback.release() }
+        .onChange(of: url, initial: true) {
+            playback.play(url, title: title, subtitle: subtitle, live: live)
+        }
     }
 
-    private var audioLayout: some View {
+    private var audioBackdrop: some View {
         VStack(spacing: 24) {
             Spacer()
             RoundedRectangle(cornerRadius: 20)
@@ -288,10 +336,34 @@ private struct MediaView: View {
                 Text(subtitle).font(.callout).foregroundStyle(.secondary)
             }
             if live { LiveBadge() }
-            PlayerHost(player: playback.player, controlsStyle: .inline)
-                .frame(height: 40)
-                .frame(maxWidth: 460)
+
+            // Explicit volume, rather than trusting the inline control bar to offer
+            // one: for an audio-only item AVPlayerView leaves it out.
+            HStack(spacing: 10) {
+                Button {
+                    playback.isMuted.toggle()
+                } label: {
+                    Image(systemName: playback.isMuted || playback.volume == 0
+                        ? "speaker.slash.fill" : "speaker.wave.2.fill")
+                        .frame(width: 18)
+                }
+                .buttonStyle(.borderless)
+                .help(playback.isMuted ? "Sláa ljóð á" : "Sláa ljóð av")
+
+                Slider(
+                    value: Binding(
+                        get: { playback.isMuted ? 0 : playback.volume },
+                        set: { newValue in
+                            playback.volume = newValue
+                            if newValue > 0 { playback.isMuted = false }
+                        }),
+                    in: 0...1)
+            }
+            .frame(maxWidth: 260)
+            .foregroundStyle(.secondary)
+
             Spacer()
+            Spacer().frame(height: 48)  // room for the control bar pinned below
         }
         .padding(32)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
