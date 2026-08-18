@@ -90,7 +90,9 @@ APPCAST
 
 echo ""
 echo "Done. ${ZIP} opens on any Mac (macOS 14+) with no warnings."
-echo "Publish: commit + push appcast.xml, then:"
-echo "  gh release create v${VERSION} ${ZIP} --title \"KVF ${VERSION}\" --notes \"...\""
-echo "  /opt/homebrew/Library/Taps/steingmo/homebrew-tap/bump-cask.sh kvf-player ${VERSION}"
+echo "Publish in this order — the appcast advertises the release URL, so the"
+echo "release has to exist before the feed points anyone at it:"
+echo "  1. gh release create v${VERSION} ${ZIP} --title \"KVF ${VERSION}\" --notes \"...\""
+echo "  2. git add appcast.xml && git commit -m \"KVF ${VERSION}\" && git push"
+echo "  3. /opt/homebrew/Library/Taps/steingmo/homebrew-tap/bump-cask.sh kvf-player ${VERSION}"
 spctl --assess --type execute --verbose "$APP" || true
