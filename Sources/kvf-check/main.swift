@@ -39,6 +39,18 @@ check("guide flags Faroe-only entries", guide.first?.restricted == true && guide
 check("guide resolves relative images", guide.first?.image?.absoluteString == "https://kvf.fo/sites/dagur.jpg")
 check("guide knows which rows expand", guide.first?.hasDetail == true && guide.last?.hasDetail == false)
 
+// Real schedules carry rows with a programme banner and no description; expanding
+// those showed nothing but a large picture.
+let imageOnlyHTML = """
+<div class="views-row"><div class="s-normal">19:00
+  <div class="s-heiti">Dagur og vika</div>
+  <div class="s-imgmedia"><img src="/sites/default/files/styles/nvf-very-small/public/dv.png?itok=x"></div>
+</div></div>
+"""
+let imageOnly = parseGuideHTML(imageOnlyHTML)
+check("guide still reads an image-only row", imageOnly.first?.image != nil)
+check("guide will not expand a row with no description", imageOnly.first?.hasDetail == false)
+
 // MARK: image URLs
 
 check(

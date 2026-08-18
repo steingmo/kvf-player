@@ -87,7 +87,10 @@ public struct GuideEntry: Identifiable, Hashable, Sendable {
     /// Currently airing.
     public let current: Bool
 
-    public var hasDetail: Bool { !description.isEmpty || image != nil }
+    /// Only rows with something to read are worth expanding. Plenty of entries carry
+    /// a generic programme banner and no description; those used to open into nothing
+    /// but a large picture.
+    public var hasDetail: Bool { !description.isEmpty }
 }
 
 public struct GuideDay: Sendable {

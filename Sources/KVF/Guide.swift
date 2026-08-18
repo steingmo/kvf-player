@@ -102,18 +102,23 @@ private struct GuideRow: View {
     }
 
     private var detail: some View {
-        VStack(alignment: .leading, spacing: 8) {
+        // Thumbnail beside the text, not above it: a schedule row is a list item, and
+        // a full-width image made every expansion look like a hero banner.
+        HStack(alignment: .top, spacing: 12) {
             if let image = entry.image {
-                // Fit, not fill: these thumbnails vary in aspect and fill cropped them.
+                // Fit, not fill: these vary in aspect and fill cropped them.
                 AsyncImage(url: image) { $0.resizable().scaledToFit() } placeholder: {
-                    RoundedRectangle(cornerRadius: 8).fill(.quaternary)
+                    RoundedRectangle(cornerRadius: 6).fill(.quaternary)
+                        .aspectRatio(16 / 9, contentMode: .fit)
                 }
-                .frame(maxWidth: 320, maxHeight: 180)
-                .clipShape(RoundedRectangle(cornerRadius: 8))
+                .frame(width: 160, height: 90)
+                .clipShape(RoundedRectangle(cornerRadius: 6))
             }
-            if !entry.description.isEmpty {
-                Text(entry.description).font(.callout).foregroundStyle(.secondary)
-            }
+            Text(entry.description)
+                .font(.callout)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
+            Spacer(minLength: 0)
         }
         .padding(.leading, 4)
         .padding(.vertical, 6)
