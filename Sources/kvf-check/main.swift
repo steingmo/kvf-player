@@ -106,6 +106,42 @@ let vit = parseVitShows(vitHTML)
 check("vit dedupes by path and ignores other sections", vit.count == 2)
 check("vit sorts by title", vit.map(\.title) == ["Anna og Bertha", "Snipp Snapp"])
 
+// MARK: VIT programme pages
+
+let vitPageHTML = """
+<title>Alt um djór | Kringvarp Føroya</title>
+<script>
+var media = 'BTA00375_UT304_Alt_um_djor_Kuluboeka_15_16012018';
+var created = '2024';
+var mode = 'video';
+</script>
+<div class="quicktabs-views-group">
+  <div class="views-field views-field-field-mynd"><a href="/vit/sending/sv/alt-um-djor?sid=100105"><img src="/sites/default/files/styles/news_xtra_xtra_large/public/kuluboka.jpg?itok=UeDk24LH" /></a></div>
+  <span class="views-field views-field-title"><span class="field-content"><a href="/vit/sending/sv/alt-um-djor?sid=100105">Kúlubøkan Klára</a></span></span>
+  <div class="views-field views-field-field-publish"><span content="2022-01-18T12:00:00+00:00">18-01-2022</span></div>
+</div><div class="quicktabs-views-group">
+  <span class="views-field views-field-title"><span class="field-content"><a href="/vit/sending/sv/alt-um-djor?sid=131079">Fílurin Finnur</a></span></span>
+  <div class="views-field views-field-field-publish"><span content="2021-11-09T12:00:00+00:00">09-11-2021</span></div>
+</div>
+"""
+
+check(
+    "vit stream is assembled from the page's player variables",
+    parseVitStream(vitPageHTML)?.url.absoluteString
+        == "https://vod.kringvarp.fo/redirect/video/_definst_/smil:smil/video/BTA00375_UT304_Alt_um_djor_Kuluboeka_15_16012018.smil?type=m3u8")
+check("vit stream knows video from audio", parseVitStream(vitPageHTML)?.video == true)
+check("vit stream is absent when the page sets no media", parseVitStream("<html></html>") == nil)
+check("vit page title drops the site suffix", parseVitPageTitle(vitPageHTML) == "Alt um djór")
+
+let vitEpisodes = parseVitEpisodes(vitPageHTML)
+check("vit episodes parse", vitEpisodes.count == 2)
+check("vit episodes read sid and title",
+      vitEpisodes.first?.sid == "100105" && vitEpisodes.first?.title == "Kúlubøkan Klára")
+check("vit episodes read the publish date", vitEpisodes.first?.date != nil)
+check("vit episodes use the original image",
+      vitEpisodes.first?.image?.absoluteString == "https://kvf.fo/sites/default/files/kuluboka.jpg")
+check("vit episodes tolerate a missing image", vitEpisodes.last?.image == nil)
+
 // MARK: podcast feed
 
 let feedXML = """
@@ -191,6 +227,23 @@ if CommandLine.arguments.contains("--live") {
         let vit = try await KVFService.shared.vitShows()
         check("VIT list parses", !vit.isEmpty)
         print("     \(vit.count) VIT shows")
+
+        // VIT has no feed: prove the assembled stream URL really resolves to a playlist.
+        if let show = vit.first {
+            let detail = try await KVFService.shared.vitShow(show)
+            check("\(show.title) has VIT episodes", !detail.episodes.isEmpty)
+
+            if let episode = detail.episodes.first {
+                let stream = try await KVFService.shared.vitStream(path: show.path, sid: episode.sid)
+                let (bytes, response) = try await URLSession.shared.data(from: stream.url)
+                let code = (response as? HTTPURLResponse)?.statusCode ?? 0
+                let playlist = String(decoding: bytes, as: UTF8.self)
+                check(
+                    "VIT stream resolves to an HLS playlist (\(episode.title))",
+                    code == 200 && playlist.hasPrefix("#EXTM3U"))
+                print("     \(detail.episodes.count) episodes, stream: \(stream.url.absoluteString)")
+            }
+        }
     } catch {
         check("live fetch — \(error.localizedDescription)", false)
     }

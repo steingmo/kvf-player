@@ -14,12 +14,6 @@ struct KVFApp: App {
         .defaultSize(width: 1080, height: 680)
         .commands { CheckForUpdatesCommand(updater: updater) }
 
-        // VIT shows expose no podcast feed and no stream URL in their markup, so
-        // they open on the real kvf.fo page and use KVF's own player.
-        WindowGroup("VIT", id: "vit", for: String.self) { $path in
-            if let path { VitWebView(path: path) }
-        }
-        .defaultSize(width: 980, height: 720)
     }
 }
 
@@ -47,6 +41,11 @@ struct EpisodeRef: Hashable {
     let episode: Episode
 }
 
+struct VitEpisodeRef: Hashable {
+    let show: VitShow
+    let episode: VitEpisode
+}
+
 struct RootView: View {
     @State private var route: Route? = .channel(defaultChannelID)
     @State private var path = NavigationPath()
@@ -61,6 +60,10 @@ struct RootView: View {
                 detail
                     .navigationDestination(for: Show.self) { ShowView(show: $0) }
                     .navigationDestination(for: EpisodeRef.self) { WatchView(show: $0.show, episode: $0.episode) }
+                    .navigationDestination(for: VitShow.self) { VitShowView(show: $0) }
+                    .navigationDestination(for: VitEpisodeRef.self) {
+                        VitWatchView(show: $0.show, episode: $0.episode)
+                    }
             }
         }
         .onChange(of: route) { path = NavigationPath() }

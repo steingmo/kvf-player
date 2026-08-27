@@ -1,6 +1,5 @@
 import KVFKit
 import SwiftUI
-import WebKit
 
 enum Loadable<Value> {
     case loading
@@ -184,7 +183,6 @@ private struct EpisodeRow: View {
 struct VitBrowseView: View {
     @State private var state: Loadable<[VitShow]> = .loading
     @State private var search = ""
-    @Environment(\.openWindow) private var openWindow
 
     var body: some View {
         Group {
@@ -198,17 +196,9 @@ struct VitBrowseView: View {
                     search.isEmpty || $0.title.localizedCaseInsensitiveContains(search)
                 }
                 List(matches) { show in
-                    Button {
-                        openWindow(id: "vit", value: show.path)
-                    } label: {
-                        HStack {
-                            Text(show.title)
-                            Spacer()
-                            Image(systemName: "arrow.up.forward.app").foregroundStyle(.secondary)
-                        }
-                        .contentShape(.rect)
+                    NavigationLink(value: show) {
+                        Text(show.title)
                     }
-                    .buttonStyle(.plain)
                 }
             }
         }
@@ -228,16 +218,86 @@ struct VitBrowseView: View {
     }
 }
 
-struct VitWebView: NSViewRepresentable {
-    let path: String
+struct VitShowView: View {
+    let show: VitShow
 
-    func makeNSView(context: Context) -> WKWebView {
-        let view = WKWebView()
-        if let url = resolveKVFURL(path) {
-            view.load(URLRequest(url: url))
+    @State private var state: Loadable<VitShowDetail> = .loading
+
+    var body: some View {
+        Group {
+            switch state {
+            case .loading:
+                LoadingState(message: nil) {}
+            case .failed(let message):
+                LoadingState(message: message) { await load() }
+            case .loaded(let detail):
+                List {
+                    Section("\(detail.episodes.count) sendingar") {
+                        ForEach(detail.episodes) { episode in
+                            NavigationLink(value: VitEpisodeRef(show: show, episode: episode)) {
+                                VStack(alignment: .leading, spacing: 3) {
+                                    Text(episode.title)
+                                    if let date = episode.date {
+                                        Text(date.formatted(date: .abbreviated, time: .omitted))
+                                            .font(.caption)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                                .padding(.vertical, 2)
+                            }
+                        }
+                    }
+                }
+            }
         }
-        return view
+        .navigationTitle(show.title)
+        .task(id: show.path) { await load() }
     }
 
-    func updateNSView(_ view: WKWebView, context: Context) {}
+    private func load() async {
+        state = .loading
+        do {
+            state = .loaded(try await KVFService.shared.vitShow(show))
+        } catch {
+            state = .failed(error.localizedDescription)
+        }
+    }
+}
+
+/// VIT streams are not in a feed — the URL is assembled from variables on the
+/// programme's own page, so it is resolved when you pick an episode.
+struct VitWatchView: View {
+    let show: VitShow
+    let episode: VitEpisode
+
+    @State private var state: Loadable<VitStream> = .loading
+
+    var body: some View {
+        Group {
+            switch state {
+            case .loading:
+                LoadingState(message: nil) {}
+            case .failed(let message):
+                LoadingState(message: message) { await load() }
+            case .loaded(let stream):
+                MediaView(
+                    url: stream.url,
+                    title: episode.title,
+                    subtitle: show.title,
+                    video: stream.video,
+                    live: false)
+            }
+        }
+        .navigationTitle(episode.title)
+        .task(id: episode.id) { await load() }
+    }
+
+    private func load() async {
+        state = .loading
+        do {
+            state = .loaded(try await KVFService.shared.vitStream(path: show.path, sid: episode.sid))
+        } catch {
+            state = .failed(error.localizedDescription)
+        }
+    }
 }

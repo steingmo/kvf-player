@@ -283,7 +283,7 @@ struct WatchView: View {
     }
 }
 
-private struct MediaView: View {
+struct MediaView: View {
     let url: URL
     let title: String
     let subtitle: String

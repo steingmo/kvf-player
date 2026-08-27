@@ -248,6 +248,58 @@ public func kvfImageURL(_ source: String) -> URL? {
 
 // MARK: - VIT
 
+private let vitMediaRE = rx("var\\s+media\\s*=\\s*'([^']+)'")
+private let vitModeRE = rx("var\\s+mode\\s*=\\s*'([^']+)'")
+private let vitSidRE = rx("[?&]sid=(\\d+)")
+private let vitTitleFieldRE = rx("views-field-title.*?<a[^>]*>(.*?)</a>")
+private let vitDateRE = rx("content=\"(\\d{4}-\\d{2}-\\d{2}T[^\"]*)\"")
+private let vitImageRE = rx("<img[^>]*src=\"([^\"]+)\"")
+private let pageTitleRE = rx("<title>(.*?)</title>")
+
+private let isoFormatter = ISO8601DateFormatter()
+
+/// VIT programmes have no podcast feed. The page sets JW Player variables and the
+/// site's own jwplayer_on_demand.js assembles the stream URL from them; this builds
+/// the same URL so the app can play it natively instead of embedding a web player.
+public func parseVitStream(_ html: String) -> VitStream? {
+    guard let media = group(vitMediaRE, html), let mode = group(vitModeRE, html),
+          mode == "video" || mode == "audio",
+          let url = URL(
+            string: "https://vod.kringvarp.fo/redirect/\(mode)/_definst_/smil:smil/\(mode)/\(media).smil?type=m3u8")
+    else { return nil }
+
+    return VitStream(url: url, video: mode == "video")
+}
+
+/// "Alt um djór | Kringvarp Føroya" -> "Alt um djór"
+public func parseVitPageTitle(_ html: String) -> String {
+    guard let raw = group(pageTitleRE, html) else { return "" }
+    return stripTags(raw.split(separator: "|").first.map(String.init) ?? raw)
+}
+
+public func parseVitEpisodes(_ html: String) -> [VitEpisode] {
+    var seen = Set<String>()
+    var episodes: [VitEpisode] = []
+
+    for group_ in html.components(separatedBy: "quicktabs-views-group").dropFirst() {
+        guard let sid = group(vitSidRE, group_),
+              let rawTitle = group(vitTitleFieldRE, group_)
+        else { continue }
+
+        let title = stripTags(rawTitle)
+        guard !title.isEmpty, seen.insert(sid).inserted else { continue }
+
+        episodes.append(
+            VitEpisode(
+                sid: sid,
+                title: title,
+                date: group(vitDateRE, group_).flatMap { isoFormatter.date(from: $0) },
+                image: group(vitImageRE, group_).flatMap { kvfImageURL($0) }))
+    }
+
+    return episodes
+}
+
 public func parseVitShows(_ html: String) -> [VitShow] {
     var shows: [String: VitShow] = [:]
     for anchor in extractAnchors(html) where anchor.href.hasPrefix("/vit/sending/") && !anchor.text.isEmpty {

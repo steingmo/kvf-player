@@ -88,8 +88,10 @@ Notes for anyone reading the player code:
   presenting view per `AVPlayer`: two live `AVPlayerView`s tore down each other's
   video output, and sharing one view instance between two representables corrupted
   SwiftUI's layout tree (a hard crash). Don't add a second one.
-- VIT programmes expose no feed and no stream URL in their markup, so they open in
-  their own window on the real kvf.fo page, using KVF's own player.
+- VIT programmes have no podcast feed. Their pages set JW Player variables and let
+  kvf.fo's own script assemble the stream URL; `parseVitStream` builds the same URL,
+  so VIT plays in the app's player like everything else. It costs one page fetch per
+  episode, because the URL only exists on the episode's own page.
 
 ## Unofficial
 

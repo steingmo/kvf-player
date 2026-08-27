@@ -35,6 +35,8 @@ public actor KVFService {
     private var vitCache: Cached<[VitShow]>?
     private var episodesCache: [String: Cached<ShowEpisodes>] = [:]
     private var guideCache: [String: Cached<GuideDay>] = [:]
+    private var vitShowCache: [String: Cached<VitShowDetail>] = [:]
+    private var vitStreamCache: [String: Cached<VitStream>] = [:]
 
     private let session: URLSession = {
         let config = URLSessionConfiguration.default
@@ -110,6 +112,46 @@ public actor KVFService {
     }
 
     // MARK: VIT
+
+    /// Episode list for one VIT programme. Pages that carry a single programme and no
+    /// list get one synthesized entry so the UI has something to play.
+    public func vitShow(_ show: VitShow, force: Bool = false) async throws -> VitShowDetail {
+        if !force, let cached = vitShowCache[show.path], cached.valid(for: Self.episodesTTL) {
+            return cached.value
+        }
+
+        let html = try await fetchText("\(base)\(show.path)")
+        var episodes = parseVitEpisodes(html)
+
+        if episodes.isEmpty, parseVitStream(html) != nil {
+            let title = parseVitPageTitle(html)
+            episodes = [
+                VitEpisode(sid: "", title: title.isEmpty ? show.title : title, date: nil, image: nil)
+            ]
+        }
+        guard !episodes.isEmpty else { throw FeedError.layoutChanged("\(show.title)") }
+
+        let detail = VitShowDetail(show: show, episodes: episodes)
+        vitShowCache[show.path] = Cached(value: detail, fetchedAt: Date())
+        return detail
+    }
+
+    /// Resolves the stream for one VIT programme. The URL is assembled from JW Player
+    /// variables on the page, so it needs a fetch per episode rather than coming from
+    /// a feed. Pass an empty sid for a page that carries a single programme.
+    public func vitStream(path: String, sid: String) async throws -> VitStream {
+        let key = "\(path)?\(sid)"
+        if let cached = vitStreamCache[key], cached.valid(for: Self.episodesTTL) { return cached.value }
+
+        let suffix = sid.isEmpty ? "" : (path.contains("?") ? "&sid=\(sid)" : "?sid=\(sid)")
+        let html = try await fetchText("\(base)\(path)\(suffix)")
+        guard let stream = parseVitStream(html) else {
+            throw FeedError.layoutChanged("VIT-streyminum")
+        }
+
+        vitStreamCache[key] = Cached(value: stream, fetchedAt: Date())
+        return stream
+    }
 
     public func vitShows(force: Bool = false) async throws -> [VitShow] {
         if !force, let cached = vitCache, cached.valid(for: Self.catalogueTTL) { return cached.value }

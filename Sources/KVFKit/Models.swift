@@ -107,4 +107,39 @@ public struct VitShow: Identifiable, Hashable, Sendable {
     public let title: String
 
     public var id: String { path }
+
+    public init(path: String, title: String) {
+        self.path = path
+        self.title = title
+    }
+}
+
+public struct VitEpisode: Identifiable, Hashable, Sendable {
+    /// kvf.fo's programme id, used as ?sid= on the show page. Empty when the show
+    /// page carries a single programme and no episode list.
+    public let sid: String
+    public let title: String
+    public let date: Date?
+    public let image: URL?
+
+    public var id: String { sid.isEmpty ? title : sid }
+
+    public init(sid: String, title: String, date: Date?, image: URL?) {
+        self.sid = sid
+        self.title = title
+        self.date = date
+        self.image = image
+    }
+}
+
+public struct VitShowDetail: Sendable {
+    public let show: VitShow
+    public let episodes: [VitEpisode]
+}
+
+/// VIT pages have no podcast feed; the stream is assembled from the JW Player
+/// variables the page sets. See `parseVitStream`.
+public struct VitStream: Hashable, Sendable {
+    public let url: URL
+    public let video: Bool
 }
