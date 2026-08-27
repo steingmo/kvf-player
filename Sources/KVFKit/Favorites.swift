@@ -9,14 +9,16 @@ public final class Favorites {
     public static let shared = Favorites()
 
     private static let key = "kvf.favorites"
+    private static let vitKey = "kvf.favorites.vit"
 
     public private(set) var shows: [Show] = []
+    public private(set) var vitShows: [VitShow] = []
+
+    public var isEmpty: Bool { shows.isEmpty && vitShows.isEmpty }
 
     private init() {
-        if let data = UserDefaults.standard.data(forKey: Self.key),
-           let stored = try? JSONDecoder().decode([Show].self, from: data) {
-            shows = stored
-        }
+        shows = Self.load(Self.key) ?? []
+        vitShows = Self.load(Self.vitKey) ?? []
     }
 
     public func contains(_ show: Show) -> Bool { shows.contains(show) }
@@ -27,7 +29,27 @@ public final class Favorites {
         } else {
             shows.append(show)
         }
-        UserDefaults.standard.set(try? JSONEncoder().encode(shows), forKey: Self.key)
+        Self.save(shows, to: Self.key)
+    }
+
+    public func contains(_ show: VitShow) -> Bool { vitShows.contains(show) }
+
+    public func toggle(_ show: VitShow) {
+        if let index = vitShows.firstIndex(of: show) {
+            vitShows.remove(at: index)
+        } else {
+            vitShows.append(show)
+        }
+        Self.save(vitShows, to: Self.vitKey)
+    }
+
+    private static func load<Value: Decodable>(_ key: String) -> [Value]? {
+        guard let data = UserDefaults.standard.data(forKey: key) else { return nil }
+        return try? JSONDecoder().decode([Value].self, from: data)
+    }
+
+    private static func save(_ value: some Encodable, to key: String) {
+        UserDefaults.standard.set(try? JSONEncoder().encode(value), forKey: key)
     }
 }
 

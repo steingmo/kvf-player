@@ -9,7 +9,7 @@ of a browser tab.
   with episode lists and a seekable player for both video and audio
 - **Skrá** — day-by-day TV and radio schedules, with the current programme marked
 - **VIT** — KVF's children's section
-- **Uppáhald** — star any programme to pin it to the sidebar
+- **Uppáhald** — star any programme, on demand or VIT, to pin it to the sidebar
 - Picture-in-Picture, AirPlay, fullscreen, and Now Playing / media-key control
 
 ## Install

@@ -142,6 +142,16 @@ check("vit episodes use the original image",
       vitEpisodes.first?.image?.absoluteString == "https://kvf.fo/sites/default/files/kuluboka.jpg")
 check("vit episodes tolerate a missing image", vitEpisodes.last?.image == nil)
 
+// Favourites persist as JSON, so both show types have to survive a round trip.
+let storedShow = Show(feedID: "123", title: "Dagur og vika", kind: .tv)
+let storedVit = VitShow(path: "/vit/sending/sv/alt-um-djor", title: "Alt um djór")
+check(
+    "a favourite show survives encode/decode",
+    (try? JSONDecoder().decode([Show].self, from: JSONEncoder().encode([storedShow]))) == [storedShow])
+check(
+    "a favourite VIT show survives encode/decode",
+    (try? JSONDecoder().decode([VitShow].self, from: JSONEncoder().encode([storedVit]))) == [storedVit])
+
 // MARK: podcast feed
 
 let feedXML = """

@@ -33,6 +33,7 @@ enum Route: Hashable {
     case browse(Kind)
     case vit
     case show(Show)
+    case vitShow(VitShow)
 }
 
 /// Pushed onto the detail stack from a show's episode list.
@@ -77,11 +78,15 @@ struct RootView: View {
             Section("Útvarp") {
                 ForEach(channels.filter { $0.kind == .radio }) { row($0) }
             }
-            if !favorites.shows.isEmpty {
+            if !favorites.isEmpty {
                 Section("Uppáhald") {
                     ForEach(favorites.shows) { show in
                         Label(show.title, systemImage: "star.fill")
                             .tag(Route.show(show))
+                    }
+                    ForEach(favorites.vitShows) { show in
+                        Label(show.title, systemImage: "star.fill")
+                            .tag(Route.vitShow(show))
                     }
                 }
             }
@@ -127,6 +132,8 @@ struct RootView: View {
             VitBrowseView()
         case .show(let show):
             ShowView(show: show)
+        case .vitShow(let show):
+            VitShowView(show: show)
         case nil:
             ContentUnavailableView("Vel eina sending", systemImage: "tv")
         }

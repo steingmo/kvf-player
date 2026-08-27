@@ -101,7 +101,7 @@ public struct GuideDay: Sendable {
 
 // MARK: - VIT (children's section)
 
-public struct VitShow: Identifiable, Hashable, Sendable {
+public struct VitShow: Identifiable, Hashable, Codable, Sendable {
     /// Path on kvf.fo, e.g. "/vit/sending/sv/snipp-snapp".
     public let path: String
     public let title: String

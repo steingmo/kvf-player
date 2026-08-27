@@ -57,7 +57,9 @@ struct BrowseView: View {
                                 HStack {
                                     Text(show.title)
                                     Spacer()
-                                    StarButton(show: show)
+                                    StarButton(isFavorite: favorites.contains(show)) {
+                                        favorites.toggle(show)
+                                    }
                                 }
                             }
                         }
@@ -83,18 +85,16 @@ struct BrowseView: View {
 }
 
 struct StarButton: View {
-    let show: Show
-    @State private var favorites = Favorites.shared
+    let isFavorite: Bool
+    let toggle: () -> Void
 
     var body: some View {
-        Button {
-            favorites.toggle(show)
-        } label: {
-            Image(systemName: favorites.contains(show) ? "star.fill" : "star")
-                .foregroundStyle(favorites.contains(show) ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
+        Button(action: toggle) {
+            Image(systemName: isFavorite ? "star.fill" : "star")
+                .foregroundStyle(isFavorite ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
         }
         .buttonStyle(.borderless)
-        .help(favorites.contains(show) ? "Tak úr uppáhaldi" : "Legg í uppáhald")
+        .help(isFavorite ? "Tak úr uppáhaldi" : "Legg í uppáhald")
     }
 }
 
@@ -102,6 +102,7 @@ struct ShowView: View {
     let show: Show
 
     @State private var state: Loadable<ShowEpisodes> = .loading
+    @State private var favorites = Favorites.shared
 
     var body: some View {
         Group {
@@ -136,7 +137,9 @@ struct ShowView: View {
             }
         }
         .navigationTitle(show.title)
-        .toolbar { StarButton(show: show) }
+        .toolbar {
+            StarButton(isFavorite: favorites.contains(show)) { favorites.toggle(show) }
+        }
         .task(id: show.id) { await load() }
     }
 
@@ -183,6 +186,7 @@ private struct EpisodeRow: View {
 struct VitBrowseView: View {
     @State private var state: Loadable<[VitShow]> = .loading
     @State private var search = ""
+    @State private var favorites = Favorites.shared
 
     var body: some View {
         Group {
@@ -197,7 +201,13 @@ struct VitBrowseView: View {
                 }
                 List(matches) { show in
                     NavigationLink(value: show) {
-                        Text(show.title)
+                        HStack {
+                            Text(show.title)
+                            Spacer()
+                            StarButton(isFavorite: favorites.contains(show)) {
+                                favorites.toggle(show)
+                            }
+                        }
                     }
                 }
             }
@@ -222,6 +232,7 @@ struct VitShowView: View {
     let show: VitShow
 
     @State private var state: Loadable<VitShowDetail> = .loading
+    @State private var favorites = Favorites.shared
 
     var body: some View {
         Group {
@@ -251,6 +262,9 @@ struct VitShowView: View {
             }
         }
         .navigationTitle(show.title)
+        .toolbar {
+            StarButton(isFavorite: favorites.contains(show)) { favorites.toggle(show) }
+        }
         .task(id: show.path) { await load() }
     }
 

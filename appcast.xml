@@ -3,14 +3,14 @@
   <channel>
     <title>KVF</title>
     <item>
-      <title>Version 1.2.0</title>
-      <pubDate>Thu, 27 Aug 2026 20:19:04 +0100</pubDate>
-      <sparkle:version>7</sparkle:version>
-      <sparkle:shortVersionString>1.2.0</sparkle:shortVersionString>
+      <title>Version 1.3.0</title>
+      <pubDate>Thu, 27 Aug 2026 20:32:09 +0100</pubDate>
+      <sparkle:version>8</sparkle:version>
+      <sparkle:shortVersionString>1.3.0</sparkle:shortVersionString>
       <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
       <enclosure
-        url="https://github.com/steingmo/kvf-player/releases/download/v1.2.0/KVF.zip"
-        sparkle:edSignature="iWqrRYGH615QQK7bsXz2R53/QO6T7CgQZN+C+AmGW5FoPMdFIEXFUB5tQ8NKR+LFqtGMQDVwrLUyTzSkayIkAQ==" length="3407618"
+        url="https://github.com/steingmo/kvf-player/releases/download/v1.3.0/KVF.zip"
+        sparkle:edSignature="jQo+y+U9ttnpoxRwC/RO+3ofGoqLR1COvSFjZOOsio5CzK3mBrjZ6nC9soyAp+4HG8PKf29cDkjY28djmr3qAg==" length="3421437"
         type="application/octet-stream"/>
     </item>
   </channel>
