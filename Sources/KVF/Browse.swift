@@ -55,11 +55,12 @@ struct BrowseView: View {
                         ForEach(matches) { show in
                             NavigationLink(value: show) {
                                 HStack {
-                                    Text(show.title)
-                                    Spacer()
                                     StarButton(isFavorite: favorites.contains(show)) {
                                         favorites.toggle(show)
                                     }
+                                    .frame(width: 18)
+                                    Text(show.title)
+                                    Spacer()
                                 }
                             }
                         }
@@ -202,11 +203,12 @@ struct VitBrowseView: View {
                 List(matches) { show in
                     NavigationLink(value: show) {
                         HStack {
-                            Text(show.title)
-                            Spacer()
                             StarButton(isFavorite: favorites.contains(show)) {
                                 favorites.toggle(show)
                             }
+                            .frame(width: 18)
+                            Text(show.title)
+                            Spacer()
                         }
                     }
                 }
