@@ -121,7 +121,6 @@ struct VitBrowseView: View {
                     }
                 }
             }
-            .navigationTitle("VIT")
             .navigationDestination(for: VitShow.self) { VitShowView(show: $0) }
         }
         .task { await load() }
@@ -153,6 +152,9 @@ private struct VitCard: View {
                         .foregroundStyle(.secondary)
                 }
             }
+            // Width has to be pinned as well as height: scaledToFill lays the image
+            // out at its natural width, which spilled past the tile when focus scaled it.
+            .frame(maxWidth: .infinity)
             .frame(height: 190)
             .clipped()
 
