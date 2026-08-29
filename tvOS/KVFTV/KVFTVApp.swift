@@ -14,14 +14,14 @@ struct KVFTVApp: App {
 struct RootView: View {
     var body: some View {
         TabView {
+            VitBrowseView()
+                .tabItem { Text("VIT") }
             LiveView()
                 .tabItem { Text("Beinleiðis") }
             BrowseView(kind: .tv)
                 .tabItem { Text("Sjónvarp") }
             BrowseView(kind: .radio)
                 .tabItem { Text("Útvarp") }
-            VitBrowseView()
-                .tabItem { Text("VIT") }
             GuideView()
                 .tabItem { Text("Skrá") }
         }
