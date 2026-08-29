@@ -373,12 +373,45 @@ public func parseVitEpisodes(_ html: String) -> [VitEpisode] {
     return episodes
 }
 
+private let vitPathRE = rx("href=\"(/vit/sending/[^\"]+)\"")
+private let vitRowImageRE = rx("<img[^>]*src=\"([^\"]+)\"")
+private let vitRowTitleRE = rx("views-field-title[^\"]*\".*?<a[^>]*>(.*?)</a>")
+
 public func parseVitShows(_ html: String) -> [VitShow] {
     var shows: [String: VitShow] = [:]
-    for anchor in extractAnchors(html) where anchor.href.hasPrefix("/vit/sending/") && !anchor.text.isEmpty {
-        if shows[anchor.href] == nil {
-            shows[anchor.href] = VitShow(path: anchor.href, title: anchor.text)
+    var order: [String] = []
+
+    // Each programme sits in a swiper-row carrying its thumbnail and title. A
+    // programme can appear in several carousels, so prefer the block that has art.
+    for row in html.components(separatedBy: "class=\"swiper-row\"").dropFirst() {
+        guard let path = group(vitPathRE, row) else { continue }
+
+        let title = group(vitRowTitleRE, row).map(stripTags) ?? ""
+        let image = group(vitRowImageRE, row).flatMap { kvfImageURL($0) }
+
+        if let existing = shows[path] {
+            if existing.image == nil, image != nil {
+                shows[path] = VitShow(path: path, title: existing.title, image: image)
+            }
+            continue
+        }
+        guard !title.isEmpty else { continue }
+
+        shows[path] = VitShow(path: path, title: title, image: image)
+        order.append(path)
+    }
+
+    // Fall back to plain anchors if the carousel markup ever goes away.
+    if shows.isEmpty {
+        for anchor in extractAnchors(html)
+        where anchor.href.hasPrefix("/vit/sending/") && !anchor.text.isEmpty {
+            if shows[anchor.href] == nil {
+                shows[anchor.href] = VitShow(path: anchor.href, title: anchor.text)
+                order.append(anchor.href)
+            }
         }
     }
-    return shows.values.sorted { $0.title.localizedStandardCompare($1.title) == .orderedAscending }
+
+    return order.compactMap { shows[$0] }
+        .sorted { $0.title.localizedStandardCompare($1.title) == .orderedAscending }
 }

@@ -105,13 +105,21 @@ public struct VitShow: Identifiable, Hashable, Codable, Sendable {
     /// Path on kvf.fo, e.g. "/vit/sending/sv/snipp-snapp".
     public let path: String
     public let title: String
+    public let image: URL?
 
     public var id: String { path }
 
-    public init(path: String, title: String) {
+    public init(path: String, title: String, image: URL? = nil) {
         self.path = path
         self.title = title
+        self.image = image
     }
+
+    // Identity is the path alone. Favourites are stored as JSON, and artwork added
+    // later (or a retitled programme) would otherwise stop matching what is starred.
+    public static func == (lhs: VitShow, rhs: VitShow) -> Bool { lhs.path == rhs.path }
+
+    public func hash(into hasher: inout Hasher) { hasher.combine(path) }
 }
 
 public struct VitEpisode: Identifiable, Hashable, Sendable {

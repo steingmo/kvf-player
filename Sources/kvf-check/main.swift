@@ -97,14 +97,32 @@ check("catalogue drops shows it cannot name or type", unnamed.isEmpty)
 // MARK: VIT
 
 let vitHTML = """
-<a href="/vit/sending/sv/snipp-snapp">Snipp Snapp</a>
-<a href="/vit/sending/sv/snipp-snapp">Snipp Snapp</a>
-<a href="/vit/sending/sv/anna">Anna og Bertha</a>
-<a href="/sjon/sending/ikki-vit">Ikki VIT</a>
+<div class="swiper-row">
+  <div class="views-field views-field-field-mynd"><a href="/vit/sending/sv/snipp-snapp"><img src="/sites/default/files/styles/news_xtra_large_sjon_front/public/snipp.png?itok=x" /></a></div>
+  <div class="views-field views-field-title-1"><span class="field-content"><a href="/vit/sending/sv/snipp-snapp">Snipp Snapp</a></span></div>
+</div>
+<div class="swiper-row">
+  <div class="views-field views-field-title-1"><span class="field-content"><a href="/vit/sending/sv/anna">Anna og Bertha</a></span></div>
+</div>
+<div class="swiper-row">
+  <div class="views-field views-field-field-mynd"><a href="/vit/sending/sv/anna"><img src="/sites/default/files/styles/news_xtra_large_sjon_front/public/anna.png?itok=y" /></a></div>
+  <div class="views-field views-field-title-1"><span class="field-content"><a href="/vit/sending/sv/anna">Anna og Bertha</a></span></div>
+</div>
 """
 let vit = parseVitShows(vitHTML)
-check("vit dedupes by path and ignores other sections", vit.count == 2)
+check("vit dedupes by path", vit.count == 2)
 check("vit sorts by title", vit.map(\.title) == ["Anna og Bertha", "Snipp Snapp"])
+check("vit reads the programme thumbnail",
+      vit.last?.image?.absoluteString == "https://kvf.fo/sites/default/files/snipp.png")
+check("vit backfills art from a later carousel row",
+      vit.first?.image?.absoluteString == "https://kvf.fo/sites/default/files/anna.png")
+check("vit falls back to anchors without carousel markup",
+      parseVitShows(#"<a href="/vit/sending/sv/x">Ein</a>"#).count == 1)
+
+// Favourites are matched by path, so art appearing later must not unstar anything.
+check("vit identity ignores artwork",
+      VitShow(path: "/vit/sending/sv/a", title: "A")
+          == VitShow(path: "/vit/sending/sv/a", title: "A", image: URL(string: "https://kvf.fo/a.png")))
 
 // MARK: VIT programme pages
 

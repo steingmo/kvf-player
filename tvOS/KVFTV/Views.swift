@@ -96,6 +96,8 @@ struct ShowView: View {
 struct VitBrowseView: View {
     @State private var state: Loadable<[VitShow]> = .loading
 
+    private let vitColumns = Array(repeating: GridItem(.flexible(), spacing: 50), count: 4)
+
     var body: some View {
         NavigationStack {
             Group {
@@ -105,8 +107,17 @@ struct VitBrowseView: View {
                 case .failed(let message):
                     LoadingState(message: message) { await load() }
                 case .loaded(let shows):
-                    List(shows) { show in
-                        NavigationLink(value: show) { Text(show.title) }
+                    ScrollView {
+                        LazyVGrid(columns: vitColumns, spacing: 50) {
+                            ForEach(shows) { show in
+                                NavigationLink(value: show) {
+                                    VitCard(show: show)
+                                }
+                                .buttonStyle(.card)
+                            }
+                        }
+                        .padding(.horizontal, 80)
+                        .padding(.vertical, 40)
                     }
                 }
             }
@@ -122,6 +133,37 @@ struct VitBrowseView: View {
             state = .loaded(try await KVFService.shared.vitShows())
         } catch {
             state = .failed(error.localizedDescription)
+        }
+    }
+}
+
+private struct VitCard: View {
+    let show: VitShow
+
+    var body: some View {
+        VStack(spacing: 0) {
+            // kvf.fo's own thumbnails are 16:9.
+            AsyncImage(url: show.image) { image in
+                image.resizable().scaledToFill()
+            } placeholder: {
+                ZStack {
+                    Color(white: 0.16)
+                    Image(systemName: "figure.and.child.holdinghands")
+                        .font(.system(size: 44, weight: .light))
+                        .foregroundStyle(.secondary)
+                }
+            }
+            .frame(height: 190)
+            .clipped()
+
+            Text(show.title)
+                .font(.caption)
+                .lineLimit(2)
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity, minHeight: 70, alignment: .top)
+                .padding(.horizontal, 8)
+                .padding(.top, 10)
+                .background(Color(white: 0.12))
         }
     }
 }
