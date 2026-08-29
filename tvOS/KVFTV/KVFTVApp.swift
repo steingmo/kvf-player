@@ -55,36 +55,57 @@ struct LoadingState: View {
 // MARK: - Beinleiðis
 
 struct LiveView: View {
+    @State private var playing: Channel?
+
+    private let columns = [
+        GridItem(.flexible(), spacing: 60),
+        GridItem(.flexible(), spacing: 60),
+    ]
+
     var body: some View {
-        NavigationStack {
-            List {
-                Section("Sjónvarp") {
-                    ForEach(channels.filter { $0.kind == .tv }) { channel in
-                        NavigationLink(value: channel) {
-                            row(channel)
-                        }
+        ScrollView {
+            LazyVGrid(columns: columns, spacing: 60) {
+                ForEach(channels) { channel in
+                    Button {
+                        playing = channel
+                    } label: {
+                        ChannelCard(channel: channel)
                     }
-                }
-                Section("Útvarp") {
-                    ForEach(channels.filter { $0.kind == .radio }) { channel in
-                        NavigationLink(value: channel) {
-                            row(channel)
-                        }
-                    }
+                    // The tvOS home-screen tile treatment: lifts and parallaxes on focus.
+                    .buttonStyle(.card)
                 }
             }
-            .navigationTitle("Beinleiðis")
-            .navigationDestination(for: Channel.self) { channel in
-                PlayerScreen(url: channel.url, title: channel.name)
-            }
+            .padding(.horizontal, 80)
+            .padding(.vertical, 40)
+        }
+        // Full screen, not a push: a pushed player keeps the tab bar on top of the video.
+        .fullScreenCover(item: $playing) { channel in
+            PlayerScreen(url: channel.url, title: channel.name)
         }
     }
+}
 
-    private func row(_ channel: Channel) -> some View {
-        VStack(alignment: .leading, spacing: 4) {
-            Text(channel.name)
-            Text(channel.tagline).font(.caption).foregroundStyle(.secondary)
+private struct ChannelCard: View {
+    let channel: Channel
+
+    var body: some View {
+        ZStack {
+            LinearGradient(
+                colors: channel.kind == .tv
+                    ? [Color(red: 0.16, green: 0.31, blue: 0.42), Color(red: 0.09, green: 0.17, blue: 0.24)]
+                    : [Color(red: 0.42, green: 0.16, blue: 0.20), Color(red: 0.24, green: 0.09, blue: 0.12)],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing)
+
+            VStack(spacing: 16) {
+                Image(systemName: channel.kind == .tv ? "tv" : "dot.radiowaves.left.and.right")
+                    .font(.system(size: 72, weight: .light))
+                Text(channel.name).font(.title2.weight(.semibold))
+                Text(channel.tagline).font(.callout).foregroundStyle(.secondary)
+            }
+            .padding(24)
         }
+        .frame(height: 300)
     }
 }
 
@@ -95,6 +116,7 @@ struct PlayerScreen: View {
     let title: String
 
     @State private var player = AVPlayer()
+    @Environment(\.dismiss) private var dismiss
 
     var body: some View {
         VideoPlayer(player: player)
@@ -109,5 +131,6 @@ struct PlayerScreen: View {
                 player.pause()
                 player.replaceCurrentItem(with: nil)
             }
+            .onExitCommand { dismiss() }
     }
 }

@@ -24,9 +24,6 @@ struct BrowseView: View {
             }
             .navigationTitle(kind.faroese)
             .navigationDestination(for: Show.self) { ShowView(show: $0) }
-            .navigationDestination(for: EpisodeRef.self) { ref in
-                PlayerScreen(url: ref.episode.mediaURL, title: ref.episode.title)
-            }
         }
         .task(id: kind) { await load() }
     }
@@ -42,15 +39,11 @@ struct BrowseView: View {
     }
 }
 
-struct EpisodeRef: Hashable {
-    let show: Show
-    let episode: Episode
-}
-
 struct ShowView: View {
     let show: Show
 
     @State private var state: Loadable<ShowEpisodes> = .loading
+    @State private var playing: Episode?
 
     var body: some View {
         Group {
@@ -61,7 +54,9 @@ struct ShowView: View {
                 LoadingState(message: message) { await load() }
             case .loaded(let detail):
                 List(detail.episodes) { episode in
-                    NavigationLink(value: EpisodeRef(show: show, episode: episode)) {
+                    Button {
+                        playing = episode
+                    } label: {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(episode.title)
                             HStack(spacing: 12) {
@@ -80,6 +75,9 @@ struct ShowView: View {
             }
         }
         .navigationTitle(show.title)
+        .fullScreenCover(item: $playing) { episode in
+            PlayerScreen(url: episode.mediaURL, title: episode.title)
+        }
         .task(id: show.id) { await load() }
     }
 
@@ -114,9 +112,6 @@ struct VitBrowseView: View {
             }
             .navigationTitle("VIT")
             .navigationDestination(for: VitShow.self) { VitShowView(show: $0) }
-            .navigationDestination(for: VitEpisodeRef.self) { ref in
-                VitPlayerScreen(show: ref.show, episode: ref.episode)
-            }
         }
         .task { await load() }
     }
@@ -131,15 +126,11 @@ struct VitBrowseView: View {
     }
 }
 
-struct VitEpisodeRef: Hashable {
-    let show: VitShow
-    let episode: VitEpisode
-}
-
 struct VitShowView: View {
     let show: VitShow
 
     @State private var state: Loadable<VitShowDetail> = .loading
+    @State private var playing: VitEpisode?
 
     var body: some View {
         Group {
@@ -150,7 +141,9 @@ struct VitShowView: View {
                 LoadingState(message: message) { await load() }
             case .loaded(let detail):
                 List(detail.episodes) { episode in
-                    NavigationLink(value: VitEpisodeRef(show: show, episode: episode)) {
+                    Button {
+                        playing = episode
+                    } label: {
                         VStack(alignment: .leading, spacing: 4) {
                             Text(episode.title)
                             if let date = episode.date {
@@ -164,6 +157,9 @@ struct VitShowView: View {
             }
         }
         .navigationTitle(show.title)
+        .fullScreenCover(item: $playing) { episode in
+            VitPlayerScreen(show: show, episode: episode)
+        }
         .task(id: show.path) { await load() }
     }
 
