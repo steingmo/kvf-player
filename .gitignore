@@ -3,3 +3,5 @@ build/
 KVF.app
 .DS_Store
 .claude/
+tvOS/**/xcuserdata/
+tvOS/**/*.xcworkspace/xcuserdata/

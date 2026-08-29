@@ -31,6 +31,20 @@ The app checks for updates via [Sparkle](https://sparkle-project.org) (or on
 demand from the KVF menu) and can install them in place. Homebrew installs can
 also update with `brew upgrade --cask kvf-player`.
 
+## Apple TV
+
+`tvOS/KVFTV.xcodeproj` is a tvOS app sharing the whole `KVFKit` layer with the Mac
+app — same scrapers, same feeds, same VIT stream assembly. Open it in Xcode, or:
+
+```sh
+cd tvOS
+xcodebuild -project KVFTV.xcodeproj -scheme KVFTV \
+  -destination 'platform=tvOS Simulator,name=Apple TV 4K (3rd generation)' build
+```
+
+Sharing one scraping layer is the point: when kvf.fo changes its markup, `kvf-check
+--live` catches it once and both apps get the fix.
+
 ## Build
 
 ```sh
