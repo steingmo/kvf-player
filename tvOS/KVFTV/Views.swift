@@ -141,22 +141,21 @@ private struct VitCard: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            // kvf.fo's own thumbnails are 16:9.
-            AsyncImage(url: show.image) { image in
-                image.resizable().scaledToFill()
-            } placeholder: {
-                ZStack {
-                    Color(white: 0.16)
-                    Image(systemName: "figure.and.child.holdinghands")
-                        .font(.system(size: 44, weight: .light))
-                        .foregroundStyle(.secondary)
+            // A fixed 16:9 box with the image as an overlay, clipped to the box. Sizing
+            // the image itself and clipping after let a scaledToFill image lay out at its
+            // natural width, which spilled over neighbouring tiles once focus scaled it.
+            Color(white: 0.16)
+                .aspectRatio(16.0 / 9.0, contentMode: .fit)
+                .overlay {
+                    AsyncImage(url: show.image) { image in
+                        image.resizable().scaledToFill()
+                    } placeholder: {
+                        Image(systemName: "figure.and.child.holdinghands")
+                            .font(.system(size: 44, weight: .light))
+                            .foregroundStyle(.secondary)
+                    }
                 }
-            }
-            // Width has to be pinned as well as height: scaledToFill lays the image
-            // out at its natural width, which spilled past the tile when focus scaled it.
-            .frame(maxWidth: .infinity)
-            .frame(height: 190)
-            .clipped()
+                .clipped()
 
             Text(show.title)
                 .font(.caption)

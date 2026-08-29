@@ -112,10 +112,15 @@ let vitHTML = """
 let vit = parseVitShows(vitHTML)
 check("vit dedupes by path", vit.count == 2)
 check("vit sorts by title", vit.map(\.title) == ["Anna og Bertha", "Snipp Snapp"])
-check("vit reads the programme thumbnail",
-      vit.last?.image?.absoluteString == "https://kvf.fo/sites/default/files/snipp.png")
+check("vit thumbnails use the sized derivative, not the heavy original",
+      vit.last?.image?.absoluteString
+          == "https://kvf.fo/sites/default/files/styles/news_xtra_xtra_large/public/snipp.png")
 check("vit backfills art from a later carousel row",
-      vit.first?.image?.absoluteString == "https://kvf.fo/sites/default/files/anna.png")
+      vit.first?.image?.absoluteString
+          == "https://kvf.fo/sites/default/files/styles/news_xtra_xtra_large/public/anna.png")
+check("thumbnail rewrite keeps subdirectories",
+      kvfThumbnailURL("/sites/default/files/styles/tiny/public/2026-08/a.png?itok=z")?.absoluteString
+          == "https://kvf.fo/sites/default/files/styles/news_xtra_xtra_large/public/2026-08/a.png")
 check("vit falls back to anchors without carousel markup",
       parseVitShows(#"<a href="/vit/sending/sv/x">Ein</a>"#).count == 1)
 

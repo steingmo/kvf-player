@@ -308,6 +308,20 @@ private let styleDerivativeRE = rx("/styles/[^/]+/public/")
 /// kvf.fo serves Drupal image *derivatives*: the "podcast" style crops a show's
 /// 16:9 banner to a square — cutting the title off both ends — and the guide style
 /// shrinks thumbnails to 116x65. Dropping the style segment gives the original.
+/// kvf.fo's "news_xtra_xtra_large" derivative: a uniform 648x364 at well under a
+/// quarter megabyte. The originals behind these thumbnails run to 4727x1980 and
+/// several megabytes — decoding a gridful of those exhausts an Apple TV's memory
+/// and some tiles silently come back blank.
+public func kvfThumbnailURL(_ source: String) -> URL? {
+    guard !source.isEmpty else { return nil }
+
+    let restyled = source.replacing(styleDerivativeRE, with: "/styles/news_xtra_xtra_large/public/")
+    guard restyled != source else { return resolveKVFURL(source) }
+
+    // The itok token signs one specific derivative; kvf.fo serves the others without it.
+    return resolveKVFURL(restyled.split(separator: "?").first.map(String.init) ?? restyled)
+}
+
 public func kvfImageURL(_ source: String) -> URL? {
     guard !source.isEmpty else { return nil }
 
@@ -387,7 +401,7 @@ public func parseVitShows(_ html: String) -> [VitShow] {
         guard let path = group(vitPathRE, row) else { continue }
 
         let title = group(vitRowTitleRE, row).map(stripTags) ?? ""
-        let image = group(vitRowImageRE, row).flatMap { kvfImageURL($0) }
+        let image = group(vitRowImageRE, row).flatMap { kvfThumbnailURL($0) }
 
         if let existing = shows[path] {
             if existing.image == nil, image != nil {
