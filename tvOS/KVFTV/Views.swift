@@ -147,9 +147,7 @@ private struct VitCard: View {
             Color(white: 0.16)
                 .aspectRatio(16.0 / 9.0, contentMode: .fit)
                 .overlay {
-                    AsyncImage(url: show.image) { image in
-                        image.resizable().scaledToFill()
-                    } placeholder: {
+                    CachedImage(url: show.image) {
                         Image(systemName: "figure.and.child.holdinghands")
                             .font(.system(size: 44, weight: .light))
                             .foregroundStyle(.secondary)

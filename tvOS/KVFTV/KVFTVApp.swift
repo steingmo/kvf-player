@@ -4,6 +4,11 @@ import SwiftUI
 
 @main
 struct KVFTVApp: App {
+    init() {
+        // The default shared cache is far too small to hold a gridful of artwork.
+        URLCache.shared = URLCache(memoryCapacity: 32 << 20, diskCapacity: 256 << 20)
+    }
+
     var body: some Scene {
         WindowGroup {
             RootView()
