@@ -198,6 +198,31 @@ do {
     check("feed rejects non-RSS", true)
 }
 
+do {
+    _ = try parseFeed(feedID: "1", xml: Data("<rss><channel><<<".utf8))
+    check("feed rejects malformed XML", false)
+} catch {
+    check("feed rejects malformed XML", true)
+}
+
+// SAX delivers CDATA through a separate callback from ordinary text.
+let cdataFeed = """
+<rss><channel><title>Rás</title>
+<item>
+  <title>Ein sending</title>
+  <description><![CDATA[<p>Nakað  við CDATA</p>]]></description>
+  <enclosure url="https://vod.kringvarp.fo/a.m4a" type="audio/mp4"/>
+</item>
+</channel></rss>
+"""
+if let cdataShow = try? parseFeed(feedID: "9", xml: Data(cdataFeed.utf8)) {
+    check("feed reads a CDATA description",
+          cdataShow.episodes.first?.description == "Nakað við CDATA")
+    check("feed treats audio enclosures as radio", cdataShow.kind == .radio)
+} else {
+    check("feed parses a CDATA feed at all", false)
+}
+
 // MARK: dates
 
 check("addDays crosses month boundaries", addDays(1, to: "2026-08-31") == "2026-09-01")

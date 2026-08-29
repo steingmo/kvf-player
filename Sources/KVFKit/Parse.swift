@@ -118,10 +118,82 @@ private let pubDateFormatter: DateFormatter = {
     return formatter
 }()
 
-private extension XMLElement {
-    func child(_ name: String) -> XMLElement? { elements(forName: name).first }
-    func text(_ name: String) -> String? { child(name)?.stringValue }
-    func attr(_ name: String) -> String? { attribute(forName: name)?.stringValue }
+/// SAX rather than the tree API: XMLDocument is macOS-only, and this has to compile
+/// for tvOS too. Collects the handful of channel and item fields the app uses.
+private final class FeedCollector: NSObject, XMLParserDelegate {
+    private(set) var channel: [String: String] = [:]
+    private(set) var items: [[String: String]] = []
+    /// Any well-formed XML parses; only a feed has <channel>.
+    private(set) var sawChannel = false
+
+    private var current: [String: String] = [:]
+    private var text = ""
+    private var depth = 0
+    private var inItem = false
+    private var inChannelImage = false
+
+    func parser(
+        _ parser: XMLParser, didStartElement element: String, namespaceURI: String?,
+        qualifiedName: String?, attributes: [String: String]
+    ) {
+        depth += 1
+        text = ""
+
+        switch element {
+        case "channel":
+            sawChannel = true
+        case "item":
+            inItem = true
+            current = [:]
+        case "image" where !inItem:
+            inChannelImage = true
+        case "itunes:image" where !inItem:
+            // An empty element — the URL is an attribute, so take it here.
+            if let href = attributes["href"] { channel["itunes:image"] = href }
+        case "enclosure" where inItem:
+            current["enclosure.url"] = attributes["url"] ?? ""
+            current["enclosure.type"] = attributes["type"] ?? ""
+        default:
+            break
+        }
+    }
+
+    func parser(_ parser: XMLParser, foundCharacters string: String) {
+        text += string
+    }
+
+    func parser(_ parser: XMLParser, foundCDATA CDATABlock: Data) {
+        text += String(decoding: CDATABlock, as: UTF8.self)
+    }
+
+    func parser(
+        _ parser: XMLParser, didEndElement element: String, namespaceURI: String?,
+        qualifiedName: String?
+    ) {
+        defer {
+            depth -= 1
+            text = ""
+        }
+
+        switch element {
+        case "item":
+            items.append(current)
+            inItem = false
+        case "image":
+            inChannelImage = false
+        default:
+            let value = text.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !value.isEmpty else { return }
+            if inItem {
+                // Keep the first occurrence: <item> wins over anything nested deeper.
+                if current[element] == nil { current[element] = value }
+            } else if inChannelImage {
+                if element == "url" { channel["image.url"] = value }
+            } else if channel[element] == nil {
+                channel[element] = value
+            }
+        }
+    }
 }
 
 func parseDurationSec(_ raw: String?) -> Int {
@@ -154,37 +226,38 @@ public enum FeedError: LocalizedError {
 }
 
 public func parseFeed(feedID: String, xml data: Data) throws -> ShowEpisodes {
-    let document = try XMLDocument(data: data, options: [.nodePreserveWhitespace])
-    guard let root = document.rootElement(), let channel = root.child("channel") else {
+    let parser = XMLParser(data: data)
+    let collector = FeedCollector()
+    parser.delegate = collector
+    guard parser.parse(), collector.sawChannel else {
         throw FeedError.noChannel(feedID)
     }
 
-    let imageString = channel.child("itunes:image")?.attr("href") ?? channel.child("image")?.text("url") ?? ""
-    let title = stripTags(channel.text("title") ?? "Sending")
+    let imageString = collector.channel["itunes:image"] ?? collector.channel["image.url"] ?? ""
+    let title = stripTags(collector.channel["title"] ?? "Sending")
 
     var episodes: [Episode] = []
     var showKind: Kind = .radio
 
-    for (index, item) in channel.elements(forName: "item").enumerated() {
-        guard let enclosure = item.child("enclosure"),
-              let mediaString = enclosure.attr("url"),
+    for (index, item) in collector.items.enumerated() {
+        guard let mediaString = item["enclosure.url"], !mediaString.isEmpty,
               let mediaURL = URL(string: mediaString)
         else { continue }
 
-        let mediaType = enclosure.attr("type") ?? ""
+        let mediaType = item["enclosure.type"] ?? ""
         let isVideo = (try? videoTypeRE.firstMatch(in: mediaType)) != nil
             || (try? videoExtRE.firstMatch(in: mediaString)) != nil
         let kind: Kind = isVideo ? .tv : .radio
         showKind = kind
 
-        let rawDescription = item.text("description") ?? item.text("itunes:summary") ?? ""
+        let rawDescription = item["description"] ?? item["itunes:summary"] ?? ""
 
         episodes.append(
             Episode(
-                id: episodeID(guid: item.text("guid"), mediaURL: mediaString, index: index),
-                title: stripTags(item.text("title") ?? "Uttan heiti"),
-                date: item.text("pubDate").flatMap { pubDateFormatter.date(from: $0) },
-                durationSec: parseDurationSec(item.text("itunes:duration")),
+                id: episodeID(guid: item["guid"], mediaURL: mediaString, index: index),
+                title: stripTags(item["title"] ?? "Uttan heiti"),
+                date: item["pubDate"].flatMap { pubDateFormatter.date(from: $0) },
+                durationSec: parseDurationSec(item["itunes:duration"]),
                 description: stripTags(rawDescription),
                 mediaURL: mediaURL,
                 kind: kind))

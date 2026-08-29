@@ -3,7 +3,11 @@ import PackageDescription
 
 let package = Package(
     name: "KVF",
-    platforms: [.macOS(.v14)],
+    platforms: [.macOS(.v14), .tvOS(.v17)],
+    products: [
+        // Exposed so the tvOS app can depend on the shared layer.
+        .library(name: "KVFKit", targets: ["KVFKit"])
+    ],
     dependencies: [
         .package(url: "https://github.com/sparkle-project/Sparkle", from: "2.6.0")
     ],
