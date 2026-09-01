@@ -1,5 +1,4 @@
 import AVKit
-import KVFKit
 import SwiftUI
 
 @main
@@ -21,14 +20,8 @@ struct RootView: View {
         TabView {
             VitBrowseView()
                 .tabItem { Text("VIT") }
-            LiveView()
-                .tabItem { Text("Beinleiðis") }
-            BrowseView(kind: .tv)
-                .tabItem { Text("Sjónvarp") }
-            BrowseView(kind: .radio)
-                .tabItem { Text("Útvarp") }
-            GuideView()
-                .tabItem { Text("Skrá") }
+            BrowseView()
+                .tabItem { Text("Sendingar") }
         }
     }
 }
@@ -54,63 +47,6 @@ struct LoadingState: View {
         } else {
             ProgressView()
         }
-    }
-}
-
-// MARK: - Beinleiðis
-
-struct LiveView: View {
-    @State private var playing: Channel?
-
-    private let columns = [
-        GridItem(.flexible(), spacing: 60),
-        GridItem(.flexible(), spacing: 60),
-    ]
-
-    var body: some View {
-        ScrollView {
-            LazyVGrid(columns: columns, spacing: 60) {
-                ForEach(channels) { channel in
-                    Button {
-                        playing = channel
-                    } label: {
-                        ChannelCard(channel: channel)
-                    }
-                    // The tvOS home-screen tile treatment: lifts and parallaxes on focus.
-                    .buttonStyle(.card)
-                }
-            }
-            .padding(.horizontal, 80)
-            .padding(.vertical, 40)
-        }
-        // Full screen, not a push: a pushed player keeps the tab bar on top of the video.
-        .fullScreenCover(item: $playing) { channel in
-            PlayerScreen(url: channel.url, title: channel.name)
-        }
-    }
-}
-
-private struct ChannelCard: View {
-    let channel: Channel
-
-    var body: some View {
-        ZStack {
-            LinearGradient(
-                colors: channel.kind == .tv
-                    ? [Color(red: 0.16, green: 0.31, blue: 0.42), Color(red: 0.09, green: 0.17, blue: 0.24)]
-                    : [Color(red: 0.42, green: 0.16, blue: 0.20), Color(red: 0.24, green: 0.09, blue: 0.12)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing)
-
-            VStack(spacing: 16) {
-                Image(systemName: channel.kind == .tv ? "tv" : "dot.radiowaves.left.and.right")
-                    .font(.system(size: 72, weight: .light))
-                Text(channel.name).font(.title2.weight(.semibold))
-                Text(channel.tagline).font(.callout).foregroundStyle(.secondary)
-            }
-            .padding(24)
-        }
-        .frame(height: 300)
     }
 }
 

@@ -4,8 +4,6 @@ import SwiftUI
 // MARK: - Sendingar
 
 struct BrowseView: View {
-    let kind: Kind
-
     @State private var state: Loadable<[Show]> = .loading
 
     var body: some View {
@@ -22,17 +20,16 @@ struct BrowseView: View {
                     }
                 }
             }
-            .navigationTitle(kind.faroese)
             .navigationDestination(for: Show.self) { ShowView(show: $0) }
         }
-        .task(id: kind) { await load() }
+        .task { await load() }
     }
 
     private func load() async {
         state = .loading
         do {
             let shows = try await KVFService.shared.catalogue()
-            state = .loaded(shows.filter { $0.kind == kind })
+            state = .loaded(shows.filter { $0.kind == .tv })
         } catch {
             state = .failed(error.localizedDescription)
         }
@@ -239,72 +236,6 @@ struct VitPlayerScreen: View {
         state = .loading
         do {
             state = .loaded(try await KVFService.shared.vitStream(path: show.path, sid: episode.sid))
-        } catch {
-            state = .failed(error.localizedDescription)
-        }
-    }
-}
-
-// MARK: - Skrá
-
-struct GuideView: View {
-    @State private var kind: Kind = .tv
-    @State private var date = todayDateString()
-    @State private var state: Loadable<GuideDay> = .loading
-
-    var body: some View {
-        NavigationStack {
-            Group {
-                switch state {
-                case .loading:
-                    LoadingState(message: nil) {}
-                case .failed(let message):
-                    LoadingState(message: message) { await load() }
-                case .loaded(let day):
-                    List(day.entries) { entry in
-                        HStack(alignment: .top, spacing: 20) {
-                            Text(entry.time).monospaced().foregroundStyle(.secondary)
-                            VStack(alignment: .leading, spacing: 4) {
-                                Text(entry.title).fontWeight(entry.current ? .semibold : .regular)
-                                if !entry.subtitle.isEmpty {
-                                    Text(entry.subtitle).font(.caption).foregroundStyle(.secondary)
-                                }
-                                if !entry.description.isEmpty {
-                                    Text(entry.description)
-                                        .font(.caption)
-                                        .foregroundStyle(.secondary)
-                                        .lineLimit(3)
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            .navigationTitle(kind == .tv ? "Sjónvarpsskrá" : "Útvarpsskrá")
-            .safeAreaInset(edge: .top) {
-                HStack(spacing: 20) {
-                    Picker("", selection: $kind) {
-                        Text("Sjónvarp").tag(Kind.tv)
-                        Text("Útvarp").tag(Kind.radio)
-                    }
-                    .pickerStyle(.segmented)
-                    .frame(maxWidth: 420)
-
-                    Spacer()
-                    Button("Fyrri") { date = addDays(-1, to: date) }
-                    Text(formatGuideDate(date)).foregroundStyle(.secondary)
-                    Button("Næsti") { date = addDays(1, to: date) }
-                }
-                .padding(.horizontal, 48)
-            }
-        }
-        .task(id: "\(kind.rawValue):\(date)") { await load() }
-    }
-
-    private func load() async {
-        state = .loading
-        do {
-            state = .loaded(try await KVFService.shared.guideDay(kind: kind, date: date))
         } catch {
             state = .failed(error.localizedDescription)
         }
