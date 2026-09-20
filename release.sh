@@ -19,6 +19,22 @@ ZIP=build/KVF.zip
 echo "==> Building universal binary (arm64 + x86_64)"
 swift build -c release --arch arm64 --arch x86_64 --product KVF
 
+# Ask SwiftPM where the product landed rather than hardcoding it. The path moved
+# from .build/apple to .build/out with a toolchain update, and because the old
+# directory still held a months-old binary, releases silently shipped stale code
+# with a fresh version number.
+BIN_DIR=$(swift build -c release --arch arm64 --arch x86_64 --show-bin-path)
+PRODUCT="$BIN_DIR/KVF"
+[ -x "$PRODUCT" ] || { echo "error: no product at $PRODUCT" >&2; exit 1; }
+
+# SwiftPM itself decides what needs recompiling, so freshness is its job; what is
+# worth asserting is that this really is the universal product we asked for.
+ARCHS=$(lipo -archs "$PRODUCT")
+case "$ARCHS" in
+    *arm64*x86_64* | *x86_64*arm64*) ;;
+    *) echo "error: $PRODUCT is '$ARCHS', expected a universal binary" >&2; exit 1 ;;
+esac
+
 # Assemble and sign in a temp dir outside any iCloud-synced folder —
 # the iCloud file provider re-stamps xattrs that break codesign.
 STAGE=$(mktemp -d /tmp/kvf-release.XXXXXX)
@@ -28,10 +44,10 @@ STAGED_ZIP="$STAGE/KVF.zip"
 
 echo "==> Assembling ${STAGED_APP}"
 mkdir -p "$STAGED_APP/Contents/MacOS" "$STAGED_APP/Contents/Resources" "$STAGED_APP/Contents/Frameworks"
-cp .build/apple/Products/Release/KVF "$STAGED_APP/Contents/MacOS/KVF"
+cp "$PRODUCT" "$STAGED_APP/Contents/MacOS/KVF"
 cp Resources/Info.plist "$STAGED_APP/Contents/Info.plist"
 cp Resources/app-icon.icns "$STAGED_APP/Contents/Resources/app-icon.icns"
-ditto .build/apple/Products/Release/Sparkle.framework "$STAGED_APP/Contents/Frameworks/Sparkle.framework"
+ditto "$BIN_DIR/Sparkle.framework" "$STAGED_APP/Contents/Frameworks/Sparkle.framework"
 install_name_tool -add_rpath @executable_path/../Frameworks "$STAGED_APP/Contents/MacOS/KVF"
 xattr -cr "$STAGED_APP"
 
