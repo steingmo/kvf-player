@@ -34,7 +34,6 @@ let guide = parseGuideHTML(guideHTML)
 check("guide parses every row", guide.count == 2)
 check("guide reads time and title", guide.first?.time == "20:00" && guide.first?.title == "Dagur & Vika")
 check("guide strips the subtitle dash", guide.first?.subtitle == "tíðindaskrá")
-check("guide flags the current programme", guide.first?.current == true && guide.last?.current == false)
 check("guide flags Faroe-only entries", guide.first?.restricted == true && guide.last?.restricted == false)
 check("guide resolves relative images", guide.first?.image?.absoluteString == "https://kvf.fo/sites/dagur.jpg")
 check("guide knows which rows expand", guide.first?.hasDetail == true && guide.last?.hasDetail == false)
@@ -66,6 +65,47 @@ check(
     kvfImageURL("https://kvf.fo/sites/default/files/dv.png")?
         .absoluteString == "https://kvf.fo/sites/default/files/dv.png")
 check("image URL rejects an empty source", kvfImageURL("") == nil)
+
+// The on-air programme is derived from the clock, because kvf.fo's own marker is
+// baked into the page when it renders and we cache pages for 15 minutes.
+func at(_ hour: Int, _ minute: Int) -> Date {
+    Calendar.current.date(bySettingHour: hour, minute: minute, second: 0, of: Date())!
+}
+
+func day(_ kind: Kind, _ times: [String], on when: Date) -> GuideDay {
+    let rows = times.map { time in
+        """
+        <div class="views-row"><div class="s-normal">\(time)
+          <div class="s-heiti">\(time) sending</div>
+        </div></div>
+        """
+    }.joined()
+    return GuideDay(kind: kind, date: todayDateString(when), entries: parseGuideHTML(rows))
+}
+
+let tvTimes = ["08:00", "08:28", "08:57", "09:25", "09:55", "22:50"]
+let tvDay = day(.tv, tvTimes, on: at(9, 28))
+check(
+    "on air picks the programme that has started, not the one before it",
+    tvDay.onAir(now: at(9, 28)) == tvDay.entries[3].id)
+check("on air moves on with the clock", tvDay.onAir(now: at(9, 56)) == tvDay.entries[4].id)
+check("on air stays put mid-programme", tvDay.onAir(now: at(9, 54)) == tvDay.entries[3].id)
+check("nothing is on air before the day starts", tvDay.onAir(now: at(6, 0)) == nil)
+check("the last programme holds until midnight", tvDay.onAir(now: at(23, 59)) == tvDay.entries[5].id)
+
+// Radio days run past midnight: 23:00 is followed by 00:00, which is tomorrow.
+let radioTimes = ["02:00", "05:00", "08:00", "08:55", "09:47", "23:00", "00:00"]
+let radioDay = day(.radio, radioTimes, on: at(9, 28))
+check(
+    "a schedule that wraps past midnight does not select tomorrow's entry",
+    radioDay.onAir(now: at(9, 28)) == radioDay.entries[3].id)
+check(
+    "the post-midnight entry is not picked late in the evening either",
+    radioDay.onAir(now: at(23, 30)) == radioDay.entries[5].id)
+
+// Another day's schedule has nothing on air.
+let otherDay = GuideDay(kind: .tv, date: "2020-01-01", entries: tvDay.entries)
+check("no programme is on air on a day that is not today", otherDay.onAir(now: at(9, 28)) == nil)
 
 // MARK: catalogue
 

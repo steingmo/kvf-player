@@ -278,8 +278,7 @@ private let leadingDashRE = rx("^-\\s*")
 
 public func parseGuideHTML(_ html: String) -> [GuideEntry] {
     html.components(separatedBy: "<div class=\"views-row").dropFirst().compactMap { row in
-        guard let match = try? normalRE.firstMatch(in: row),
-              let classes = match[1].substring, let time = match[2].substring
+        guard let match = try? normalRE.firstMatch(in: row), let time = match[2].substring
         else { return nil }
 
         let title = group(heitiRE, row).map(stripTags) ?? ""
@@ -294,8 +293,7 @@ public func parseGuideHTML(_ html: String) -> [GuideEntry] {
             subtitle: subtitle,
             description: group(textRE, row).map(stripTags) ?? "",
             image: group(imageRE, row).flatMap { kvfImageURL($0) },
-            restricted: row.contains("class=\"image-container\""),
-            current: classes.contains("s-current"))
+            restricted: row.contains("class=\"image-container\""))
     }
 }
 

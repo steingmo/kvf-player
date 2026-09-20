@@ -72,8 +72,8 @@ private let isoFormatter: DateFormatter = {
     return formatter
 }()
 
-/// "YYYY-MM-DD" for today.
-public func todayDateString() -> String { isoFormatter.string(from: Date()) }
+/// "YYYY-MM-DD" for today, in the viewer's own time zone.
+public func todayDateString(_ date: Date = Date()) -> String { isoFormatter.string(from: date) }
 
 public func addDays(_ days: Int, to dateString: String) -> String {
     guard let date = isoFormatter.date(from: dateString),

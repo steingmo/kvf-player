@@ -6,6 +6,7 @@ struct GuideView: View {
 
     @State private var date = todayDateString()
     @State private var state: Loadable<GuideDay> = .loading
+    @State private var now = Date()
 
     var body: some View {
         Group {
@@ -15,8 +16,11 @@ struct GuideView: View {
             case .failed(let message):
                 LoadingState(message: message) { await load() }
             case .loaded(let day):
+                let onAir = day.onAir(now: now)
                 List {
-                    ForEach(day.entries) { GuideRow(entry: $0) }
+                    ForEach(day.entries) { entry in
+                        GuideRow(entry: entry, onAir: entry.id == onAir)
+                    }
                 }
             }
         }
@@ -41,6 +45,13 @@ struct GuideView: View {
             }
         }
         .task(id: "\(kind.rawValue):\(date)") { await load() }
+        // Keeps the badge on the right programme while the window stays open.
+        .task {
+            while !Task.isCancelled {
+                now = Date()
+                try? await Task.sleep(for: .seconds(30))
+            }
+        }
     }
 
     private func load() async {
@@ -55,6 +66,7 @@ struct GuideView: View {
 
 private struct GuideRow: View {
     let entry: GuideEntry
+    let onAir: Bool
 
     var body: some View {
         if entry.hasDetail {
@@ -72,11 +84,11 @@ private struct GuideRow: View {
         HStack(alignment: .firstTextBaseline, spacing: 12) {
             Text(entry.time)
                 .font(.system(.body, design: .monospaced))
-                .foregroundStyle(entry.current ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
+                .foregroundStyle(onAir ? AnyShapeStyle(.tint) : AnyShapeStyle(.secondary))
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
-                    Text(entry.title).fontWeight(entry.current ? .semibold : .regular)
-                    if entry.current {
+                    Text(entry.title).fontWeight(onAir ? .semibold : .regular)
+                    if onAir {
                         Text("Í GONGD")
                             .font(.caption2.weight(.bold))
                             .foregroundStyle(.white)
